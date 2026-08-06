@@ -10,33 +10,232 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountRouteImport } from './routes/account'
+import { Route as CartRouteImport } from './routes/cart'
+import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as TechnicianRouteImport } from './routes/technician'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
+import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
+import { Route as AdminInventoryRouteImport } from './routes/admin.inventory'
+import { Route as AdminProductsRouteImport } from './routes/admin.products'
+import { Route as AdminRepairsRouteImport } from './routes/admin.repairs'
+import { Route as ProductsIndexRouteImport } from './routes/products.index'
+import { Route as ProductsProductIdRouteImport } from './routes/products.$productId'
+import { Route as RepairsIndexRouteImport } from './routes/repairs.index'
+import { Route as RepairsBookRouteImport } from './routes/repairs.book'
+import { Route as RepairsTrackRouteImport } from './routes/repairs.track'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CartRoute = CartRouteImport.update({
+  id: '/cart',
+  path: '/cart',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TechnicianRoute = TechnicianRouteImport.update({
+  id: '/technician',
+  path: '/technician',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/admin/analytics',
+  path: '/admin/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCustomersRoute = AdminCustomersRouteImport.update({
+  id: '/admin/customers',
+  path: '/admin/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminInventoryRoute = AdminInventoryRouteImport.update({
+  id: '/admin/inventory',
+  path: '/admin/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminProductsRoute = AdminProductsRouteImport.update({
+  id: '/admin/products',
+  path: '/admin/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRepairsRoute = AdminRepairsRouteImport.update({
+  id: '/admin/repairs',
+  path: '/admin/repairs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsIndexRoute = ProductsIndexRouteImport.update({
+  id: '/products/',
+  path: '/products/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsProductIdRoute = ProductsProductIdRouteImport.update({
+  id: '/products/$productId',
+  path: '/products/$productId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepairsIndexRoute = RepairsIndexRouteImport.update({
+  id: '/repairs/',
+  path: '/repairs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepairsBookRoute = RepairsBookRouteImport.update({
+  id: '/repairs/book',
+  path: '/repairs/book',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepairsTrackRoute = RepairsTrackRouteImport.update({
+  id: '/repairs/track',
+  path: '/repairs/track',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
+  '/cart': typeof CartRoute
+  '/checkout': typeof CheckoutRoute
+  '/technician': typeof TechnicianRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/customers': typeof AdminCustomersRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/repairs': typeof AdminRepairsRoute
+  '/products/$productId': typeof ProductsProductIdRoute
+  '/repairs/book': typeof RepairsBookRoute
+  '/repairs/track': typeof RepairsTrackRoute
+  '/admin/': typeof AdminIndexRoute
+  '/products/': typeof ProductsIndexRoute
+  '/repairs/': typeof RepairsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
+  '/cart': typeof CartRoute
+  '/checkout': typeof CheckoutRoute
+  '/technician': typeof TechnicianRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/customers': typeof AdminCustomersRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/repairs': typeof AdminRepairsRoute
+  '/products/$productId': typeof ProductsProductIdRoute
+  '/repairs/book': typeof RepairsBookRoute
+  '/repairs/track': typeof RepairsTrackRoute
+  '/admin': typeof AdminIndexRoute
+  '/products': typeof ProductsIndexRoute
+  '/repairs': typeof RepairsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
+  '/cart': typeof CartRoute
+  '/checkout': typeof CheckoutRoute
+  '/technician': typeof TechnicianRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/customers': typeof AdminCustomersRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/products': typeof AdminProductsRoute
+  '/admin/repairs': typeof AdminRepairsRoute
+  '/products/$productId': typeof ProductsProductIdRoute
+  '/repairs/book': typeof RepairsBookRoute
+  '/repairs/track': typeof RepairsTrackRoute
+  '/admin/': typeof AdminIndexRoute
+  '/products/': typeof ProductsIndexRoute
+  '/repairs/': typeof RepairsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/account'
+    | '/cart'
+    | '/checkout'
+    | '/technician'
+    | '/admin/analytics'
+    | '/admin/customers'
+    | '/admin/inventory'
+    | '/admin/products'
+    | '/admin/repairs'
+    | '/products/$productId'
+    | '/repairs/book'
+    | '/repairs/track'
+    | '/admin/'
+    | '/products/'
+    | '/repairs/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/account'
+    | '/cart'
+    | '/checkout'
+    | '/technician'
+    | '/admin/analytics'
+    | '/admin/customers'
+    | '/admin/inventory'
+    | '/admin/products'
+    | '/admin/repairs'
+    | '/products/$productId'
+    | '/repairs/book'
+    | '/repairs/track'
+    | '/admin'
+    | '/products'
+    | '/repairs'
+  id:
+    | '__root__'
+    | '/'
+    | '/account'
+    | '/cart'
+    | '/checkout'
+    | '/technician'
+    | '/admin/analytics'
+    | '/admin/customers'
+    | '/admin/inventory'
+    | '/admin/products'
+    | '/admin/repairs'
+    | '/products/$productId'
+    | '/repairs/book'
+    | '/repairs/track'
+    | '/admin/'
+    | '/products/'
+    | '/repairs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
+  CartRoute: typeof CartRoute
+  CheckoutRoute: typeof CheckoutRoute
+  TechnicianRoute: typeof TechnicianRoute
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminCustomersRoute: typeof AdminCustomersRoute
+  AdminInventoryRoute: typeof AdminInventoryRoute
+  AdminProductsRoute: typeof AdminProductsRoute
+  AdminRepairsRoute: typeof AdminRepairsRoute
+  ProductsProductIdRoute: typeof ProductsProductIdRoute
+  RepairsBookRoute: typeof RepairsBookRoute
+  RepairsTrackRoute: typeof RepairsTrackRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+  ProductsIndexRoute: typeof ProductsIndexRoute
+  RepairsIndexRoute: typeof RepairsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +247,132 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cart': {
+      id: '/cart'
+      path: '/cart'
+      fullPath: '/cart'
+      preLoaderRoute: typeof CartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/technician': {
+      id: '/technician'
+      path: '/technician'
+      fullPath: '/technician'
+      preLoaderRoute: typeof TechnicianRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/admin/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/customers': {
+      id: '/admin/customers'
+      path: '/admin/customers'
+      fullPath: '/admin/customers'
+      preLoaderRoute: typeof AdminCustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/inventory': {
+      id: '/admin/inventory'
+      path: '/admin/inventory'
+      fullPath: '/admin/inventory'
+      preLoaderRoute: typeof AdminInventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/products': {
+      id: '/admin/products'
+      path: '/admin/products'
+      fullPath: '/admin/products'
+      preLoaderRoute: typeof AdminProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/repairs': {
+      id: '/admin/repairs'
+      path: '/admin/repairs'
+      fullPath: '/admin/repairs'
+      preLoaderRoute: typeof AdminRepairsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products/': {
+      id: '/products/'
+      path: '/products'
+      fullPath: '/products/'
+      preLoaderRoute: typeof ProductsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products/$productId': {
+      id: '/products/$productId'
+      path: '/products/$productId'
+      fullPath: '/products/$productId'
+      preLoaderRoute: typeof ProductsProductIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/repairs/': {
+      id: '/repairs/'
+      path: '/repairs'
+      fullPath: '/repairs/'
+      preLoaderRoute: typeof RepairsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/repairs/book': {
+      id: '/repairs/book'
+      path: '/repairs/book'
+      fullPath: '/repairs/book'
+      preLoaderRoute: typeof RepairsBookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/repairs/track': {
+      id: '/repairs/track'
+      path: '/repairs/track'
+      fullPath: '/repairs/track'
+      preLoaderRoute: typeof RepairsTrackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
+  CartRoute: CartRoute,
+  CheckoutRoute: CheckoutRoute,
+  TechnicianRoute: TechnicianRoute,
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminCustomersRoute: AdminCustomersRoute,
+  AdminInventoryRoute: AdminInventoryRoute,
+  AdminProductsRoute: AdminProductsRoute,
+  AdminRepairsRoute: AdminRepairsRoute,
+  ProductsProductIdRoute: ProductsProductIdRoute,
+  RepairsBookRoute: RepairsBookRoute,
+  RepairsTrackRoute: RepairsTrackRoute,
+  AdminIndexRoute: AdminIndexRoute,
+  ProductsIndexRoute: ProductsIndexRoute,
+  RepairsIndexRoute: RepairsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
