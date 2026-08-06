@@ -47,7 +47,7 @@ function AdminInventory() {
   const [filter, setFilter] = useState<"all" | "Product" | "Spare part">("all");
   const [movements, setMovements] = useState(seedMovements);
   const [open, setOpen] = useState(false);
-  const [sku, setSku] = useState(inventory[0].sku);
+  const [sku, setSku] = useState(inventory[0]!.sku);
   const [type, setType] = useState("Receipt");
   const [qty, setQty] = useState("1");
   const [note, setNote] = useState("");
