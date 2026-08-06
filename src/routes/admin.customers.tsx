@@ -68,7 +68,7 @@ function AdminCustomers() {
                 {customersCrm.map((c) => (
                   <TableRow
                     key={c.name}
-                    onClick={() => setSelected(c)}
+                    onClick={() => setSelected(c!)}
                     className={cn("cursor-pointer", selected.name === c.name && "bg-accent/5")}
                   >
                     <TableCell className="font-medium">{c.name}</TableCell>
