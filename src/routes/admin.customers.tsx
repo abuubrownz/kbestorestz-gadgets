@@ -38,7 +38,7 @@ const tierThresholds: Record<string, number> = {
 };
 
 function AdminCustomers() {
-  const [selected, setSelected] = useState(customersCrm[0]);
+  const [selected, setSelected] = useState(customersCrm[0]!);
 
   const customerOrders = orders.filter((o) => o.customer === selected.name);
   const customerRepairs = repairs.filter((r) => r.customer === selected.name);
