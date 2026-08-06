@@ -137,7 +137,7 @@ function Home() {
                 className="h-full w-full object-cover"
               />
             </div>
-            <div className="absolute -bottom-6 left-4 hidden rounded-2xl border border-white/10 bg-background/95 p-4 shadow-lift backdrop-blur sm:block">
+            <div className="absolute -bottom-6 left-4 hidden rounded-2xl border bg-background/95 p-4 text-foreground shadow-lift backdrop-blur sm:block">
               <p className="eyebrow text-muted-foreground">Live repair tracking</p>
               <p className="mt-1 text-sm font-semibold">KB-RP-48219 · Testing</p>
               <div className="mt-2 h-1.5 w-44 overflow-hidden rounded-full bg-secondary">
