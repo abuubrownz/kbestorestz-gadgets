@@ -186,7 +186,7 @@ function ProductFormDialog({
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [brand, setBrand] = useState(initial?.brand ?? "");
-  const [categoryValue, setCategoryValue] = useState(initial?.category ?? categories[0].slug);
+  const [categoryValue, setCategoryValue] = useState(initial?.category ?? categories[0]!.slug);
   const [price, setPrice] = useState(String(initial?.price ?? ""));
   const [stock, setStock] = useState(String(initial?.stock ?? ""));
   const [warranty, setWarranty] = useState(initial?.warranty ?? "12 months warranty");
