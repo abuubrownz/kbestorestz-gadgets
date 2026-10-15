@@ -2,27 +2,48 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Bell, Menu } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { RequireRole } from "@/components/kb/require-role";
+import { roleLabels, useAuth, type Role } from "@/lib/auth";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 export type DashboardNavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
-export function DashboardShell({
+type DashboardShellProps = {
+  title: string;
+  subtitle?: string;
+  workspace: string;
+  nav: DashboardNavItem[];
+  actions?: ReactNode;
+  /** Roles allowed to open this dashboard. Defaults to administrators only. */
+  allow?: Role[];
+  children: ReactNode;
+};
+
+export function DashboardShell({ allow = ["admin"], ...props }: DashboardShellProps) {
+  return (
+    <RequireRole allow={allow}>
+      <DashboardFrame {...props} />
+    </RequireRole>
+  );
+}
+
+function DashboardFrame({
   title,
   subtitle,
   workspace,
   nav,
   actions,
   children,
-}: {
-  title: string;
-  subtitle?: string;
-  workspace: string;
-  nav: DashboardNavItem[];
-  actions?: ReactNode;
-  children: ReactNode;
-}) {
+}: Omit<DashboardShellProps, "allow">) {
   const [open, setOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const initials = (user?.name ?? "KB")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
 
   const navList = (onNavigate?: () => void) => (
     <nav className="flex flex-col gap-1">
@@ -89,9 +110,21 @@ export function DashboardShell({
             <Button variant="outline" size="icon" aria-label="Notifications">
               <Bell className="h-4 w-4" />
             </Button>
-            <span className="grid h-9 w-9 place-items-center rounded-full ink-panel text-xs font-semibold">
-              KB
+            {user ? (
+              <div className="hidden text-right sm:block">
+                <p className="text-xs font-medium leading-tight">{user.name}</p>
+                <p className="text-[11px] leading-tight text-muted-foreground">{roleLabels[user.role]}</p>
+              </div>
+            ) : null}
+            <span
+              className="grid h-9 w-9 place-items-center rounded-full ink-panel text-xs font-semibold"
+              title={user ? `${user.name} · ${roleLabels[user.role]}` : undefined}
+            >
+              {initials || "KB"}
             </span>
+            <Button variant="outline" size="sm" onClick={signOut}>
+              Sign out
+            </Button>
           </div>
         </header>
         <div className="flex-1 p-4 sm:p-6">{children}</div>

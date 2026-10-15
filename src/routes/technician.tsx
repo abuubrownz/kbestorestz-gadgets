@@ -36,6 +36,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
 import { repairs as seedRepairs, repairStages, formatTZS, type Repair, type RepairStage } from "@/lib/data";
 
 export const Route = createFileRoute("/technician")({
@@ -65,6 +66,8 @@ const nav = [
 const warrantyOptions = ["30 days", "60 days", "90 days", "6 months"];
 
 function TechnicianPage() {
+  const { hasRole } = useAuth();
+  const visibleNav = nav.filter((item) => item.to !== "/admin" || hasRole("admin"));
   const [repairsList, setRepairsList] = useState<Repair[]>(seedRepairs);
   const [selectedTicket, setSelectedTicket] = useState(seedRepairs[0]?.ticket ?? "");
   const [statusDrafts, setStatusDrafts] = useState<Record<string, RepairStage>>({});
@@ -147,7 +150,8 @@ function TechnicianPage() {
       title="Technician workspace"
       subtitle="Manage your assigned repairs"
       workspace="Technician workspace"
-      nav={nav}
+      nav={visibleNav}
+      allow={["technician", "admin"]}
     >
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => (

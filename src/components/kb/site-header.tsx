@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { Menu, ShoppingCart, Wrench, LayoutDashboard, Search } from "lucide-react";
+import { Menu, ShoppingCart, Wrench, LayoutDashboard, LogIn, LogOut, Search } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useCart } from "@/lib/cart";
+import { roleHome, roleLabels, useAuth } from "@/lib/auth";
 
 const nav = [
   { to: "/", label: "Home" },
@@ -15,7 +16,13 @@ const nav = [
 
 export function SiteHeader() {
   const { count } = useCart();
+  const { user, signOut, hasRole } = useAuth();
   const [open, setOpen] = useState(false);
+  // Staff-only entry points: customers and signed-out visitors never see them.
+  const staffLinks = [
+    ...(hasRole("admin") ? [{ to: "/admin", label: "Admin dashboard" }] : []),
+    ...(hasRole(["admin", "technician"]) ? [{ to: "/technician", label: "Technician dashboard" }] : []),
+  ];
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/85 backdrop-blur-xl">
@@ -50,16 +57,37 @@ export function SiteHeader() {
           >
             <Search className="h-4 w-4" />
           </Link>
-          <Link
-            to="/admin"
-            className="hidden md:block"
-            aria-label="Open dashboards"
-          >
-            <Button variant="ghost" size="sm" className="gap-2">
-              <LayoutDashboard className="h-4 w-4" />
-              Dashboards
+          {user && hasRole(["admin", "technician"]) ? (
+            <Link
+              to={roleHome[user.role] as "/"}
+              className="hidden md:block"
+              aria-label="Open dashboard"
+            >
+              <Button variant="ghost" size="sm" className="gap-2">
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboard
+              </Button>
+            </Link>
+          ) : null}
+          {user ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden gap-2 md:inline-flex"
+              onClick={signOut}
+              title={`${user.name} · ${roleLabels[user.role]}`}
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
             </Button>
-          </Link>
+          ) : (
+            <Link to="/login" search={{}} className="hidden md:block">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <LogIn className="h-4 w-4" />
+                Sign in
+              </Button>
+            </Link>
+          )}
           <Link to="/cart" aria-label="Open cart" className="relative">
             <Button variant="outline" size="icon">
               <ShoppingCart className="h-4 w-4" />
@@ -86,7 +114,7 @@ export function SiteHeader() {
             <SheetContent side="right" className="w-72">
               <SheetTitle className="font-display">Menu</SheetTitle>
               <div className="mt-6 flex flex-col gap-1">
-                {[...nav, { to: "/admin", label: "Admin dashboard" }, { to: "/technician", label: "Technician dashboard" }].map(
+                {[...nav, ...staffLinks].map(
                   (item) => (
                     <Link
                       key={item.to}
@@ -97,6 +125,27 @@ export function SiteHeader() {
                       {item.label}
                     </Link>
                   ),
+                )}
+                {user ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      signOut();
+                      setOpen(false);
+                    }}
+                    className="rounded-lg px-3 py-2.5 text-left text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  >
+                    Sign out ({roleLabels[user.role]})
+                  </button>
+                ) : (
+                  <Link
+                    to="/login"
+                    search={{}}
+                    onClick={() => setOpen(false)}
+                    className="rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  >
+                    Sign in
+                  </Link>
                 )}
                 <Link to="/repairs/book" onClick={() => setOpen(false)} className="mt-3">
                   <Button className="w-full gap-2">
