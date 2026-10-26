@@ -13,6 +13,7 @@ import { orders, repairs, technicians, inventory, customersCrm, salesTrend, form
 export const Route = createFileRoute("/admin/")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Admin Overview | KBestoreTZ" },
       { name: "description", content: "Store performance overview for KBestoreTZ admins: revenue, orders, repairs and inventory alerts." },
       { property: "og:title", content: "Admin Overview | KBestoreTZ" },

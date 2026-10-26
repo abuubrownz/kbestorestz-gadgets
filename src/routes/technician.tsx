@@ -42,6 +42,7 @@ import { repairs as seedRepairs, repairStages, formatTZS, type Repair, type Repa
 export const Route = createFileRoute("/technician")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Technician workspace — KBestoreTZ" },
       {
         name: "description",

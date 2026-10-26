@@ -22,6 +22,7 @@ export const Route = createFileRoute("/login")({
   }),
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Sign in | KBestoreTZ" },
       { name: "description", content: "Sign in to your KBestoreTZ account or staff workspace." },
       { property: "og:title", content: "Sign in | KBestoreTZ" },

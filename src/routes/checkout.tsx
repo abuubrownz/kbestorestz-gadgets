@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Check, CheckCircle2, CreditCard, Smartphone, Wallet, Banknote } from "lucide-react";
 import { PublicShell } from "@/components/kb/public-shell";
+import { DemoConfirmNotice } from "@/components/kb/demo-notice";
 import { DeviceVisual } from "@/components/kb/device-visual";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,13 +79,14 @@ function CheckoutPage() {
             <div className="grid h-16 w-16 place-items-center rounded-full bg-success/10 text-success">
               <CheckCircle2 className="h-9 w-9" />
             </div>
-            <h1 className="font-display text-3xl font-bold">Order confirmed</h1>
+            <h1 className="font-display text-3xl font-bold">Order preview (not saved)</h1>
             <p className="text-muted-foreground">
-              Thank you{customer.name ? `, ${customer.name}` : ""}. Your order has been placed successfully.
+              Thank you{customer.name ? `, ${customer.name}` : ""}. This was a demo checkout, so no order was recorded.
             </p>
             <p className="rounded-full border bg-card px-4 py-1.5 font-display text-sm font-semibold">
               {orderNumber}
             </p>
+            <DemoConfirmNotice what="order" />
           </div>
 
           <div className="mt-10 rounded-2xl border bg-card p-6 shadow-card">

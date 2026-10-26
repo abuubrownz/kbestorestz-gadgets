@@ -14,6 +14,7 @@ import { customersCrm, orders, repairs, formatTZS } from "@/lib/data";
 export const Route = createFileRoute("/admin/customers")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Customer CRM | KBestoreTZ Admin" },
       { name: "description", content: "View customer profiles, order and repair history, tiers and loyalty progress." },
       { property: "og:title", content: "Customer CRM | KBestoreTZ Admin" },

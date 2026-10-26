@@ -26,6 +26,7 @@ import { categories, products as seedProducts, type Product, formatTZS } from "@
 export const Route = createFileRoute("/admin/products")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Product Management | KBestoreTZ Admin" },
       { name: "description", content: "Manage the KBestoreTZ catalog: search, filter, edit and add products with pricing and stock." },
       { property: "og:title", content: "Product Management | KBestoreTZ Admin" },
