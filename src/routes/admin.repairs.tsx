@@ -15,6 +15,7 @@ import { repairs as seedRepairs, repairStages, technicians, formatTZS } from "@/
 export const Route = createFileRoute("/admin/repairs")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Repair Management | KBestoreTZ Admin" },
       { name: "description", content: "Track and manage repair tickets, technician assignments and stage progress." },
       { property: "og:title", content: "Repair Management | KBestoreTZ Admin" },

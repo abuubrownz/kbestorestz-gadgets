@@ -27,6 +27,7 @@ import { inventory } from "@/lib/data";
 export const Route = createFileRoute("/admin/inventory")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Inventory Management | KBestoreTZ Admin" },
       { name: "description", content: "Monitor stock levels, reorder points, suppliers and stock movements for products and spare parts." },
       { property: "og:title", content: "Inventory Management | KBestoreTZ Admin" },

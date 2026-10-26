@@ -24,6 +24,7 @@ import { orders, salesTrend, categoryPerformance, customerGrowth, repairs, forma
 export const Route = createFileRoute("/admin/analytics")({
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex, nofollow" },
       { title: "Analytics | KBestoreTZ Admin" },
       { name: "description", content: "Sales trend, category performance, repair turnaround and customer growth analytics." },
       { property: "og:title", content: "Analytics | KBestoreTZ Admin" },
