@@ -9,6 +9,7 @@ import {
   PartyPopper,
 } from "lucide-react";
 import { PublicShell } from "@/components/kb/public-shell";
+import { DemoConfirmNotice } from "@/components/kb/demo-notice";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -121,15 +122,18 @@ function RepairsBookPage() {
             <PartyPopper className="h-8 w-8" />
           </span>
           <h1 className="mt-6 font-display text-3xl font-bold tracking-tight">
-            Booking confirmed!
+            Booking preview (not saved)
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Your repair request has been received. Use this tracking number to follow progress.
+            This was a demo booking, so no repair request was recorded and this number cannot be tracked yet.
           </p>
           <Card className="mt-6 w-full p-6 shadow-card">
             <p className="eyebrow text-muted-foreground">Tracking number</p>
             <p className="mt-1 font-display text-3xl font-bold text-accent">{ticket}</p>
           </Card>
+          <div className="mt-4 w-full">
+            <DemoConfirmNotice what="booking" />
+          </div>
           <Card className="mt-4 w-full p-6 text-left shadow-card">
             <h2 className="font-display text-base font-semibold">What happens next</h2>
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
