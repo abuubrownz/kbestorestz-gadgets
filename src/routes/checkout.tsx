@@ -13,9 +13,13 @@ import { useCart } from "@/lib/cart";
 import { formatTZS } from "@/lib/data";
 
 export const Route = createFileRoute("/checkout")({
+  staticData: { sitemap: false },
   component: CheckoutPage,
   head: () => ({
     meta: [
+      { name: "robots", content: "noindex" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Checkout | KBestoreTZ" },
       { name: "description", content: "Complete your order with M-Pesa, Airtel Money, Tigo Pesa, card or cash on delivery." },
       { property: "og:title", content: "Checkout | KBestoreTZ" },

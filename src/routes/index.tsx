@@ -24,8 +24,11 @@ import heroDevices from "@/assets/hero-devices.jpg";
 import { categories, formatTZS, products, repairServices, reviews } from "@/lib/data";
 
 export const Route = createFileRoute("/")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "KBestoreTZ — Buy, Repair & Upgrade Technology in Tanzania" },
       {
         name: "description",

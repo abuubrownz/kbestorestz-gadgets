@@ -17,11 +17,15 @@ function safeRedirect(value: unknown): string | undefined {
 }
 
 export const Route = createFileRoute("/login")({
-  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
-    redirect: safeRedirect(search.redirect),
-  }),
+  staticData: { sitemap: false },
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
+    const redirect = safeRedirect(search["redirect"]);
+    return redirect ? { redirect } : {};
+  },
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex, nofollow" },
       { title: "Sign in | KBestoreTZ" },
       { name: "description", content: "Sign in to your KBestoreTZ account or staff workspace." },
@@ -49,7 +53,7 @@ function LoginPage() {
     event.preventDefault();
     const cleanEmail = email.trim();
     if (!cleanEmail) return;
-    const name = cleanEmail.split("@")[0].replace(/[._-]+/g, " ") || "Guest";
+    const name = (cleanEmail.split("@")[0] ?? "Guest").replace(/[._-]+/g, " ") || "Guest";
     signIn({
       name: name.replace(/\b\w/g, (c) => c.toUpperCase()),
       email: cleanEmail,

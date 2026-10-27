@@ -25,8 +25,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { inventory } from "@/lib/data";
 
 export const Route = createFileRoute("/admin/inventory")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex, nofollow" },
       { title: "Inventory Management | KBestoreTZ Admin" },
       { name: "description", content: "Monitor stock levels, reorder points, suppliers and stock movements for products and spare parts." },

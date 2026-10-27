@@ -8,9 +8,12 @@ import { useCart } from "@/lib/cart";
 import { formatTZS } from "@/lib/data";
 
 export const Route = createFileRoute("/cart")({
+  staticData: { sitemap: false },
   component: CartPage,
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Your cart | KBestoreTZ" },
       { name: "description", content: "Review the items in your KBestoreTZ shopping cart before checkout." },
       { property: "og:title", content: "Your cart | KBestoreTZ" },

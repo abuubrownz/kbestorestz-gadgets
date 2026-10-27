@@ -11,8 +11,11 @@ import { Button } from "@/components/ui/button";
 import { orders, repairs, technicians, inventory, customersCrm, salesTrend, formatTZS } from "@/lib/data";
 
 export const Route = createFileRoute("/admin/")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex, nofollow" },
       { title: "Admin Overview | KBestoreTZ" },
       { name: "description", content: "Store performance overview for KBestoreTZ admins: revenue, orders, repairs and inventory alerts." },

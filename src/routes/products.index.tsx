@@ -20,9 +20,12 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { brands, categories, products } from "@/lib/data";
 
 export const Route = createFileRoute("/products/")({
+  staticData: { sitemap: true },
   component: ProductsPage,
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Shop | KBestoreTZ" },
       {
         name: "description",

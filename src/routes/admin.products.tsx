@@ -24,8 +24,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { categories, products as seedProducts, type Product, formatTZS } from "@/lib/data";
 
 export const Route = createFileRoute("/admin/products")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex, nofollow" },
       { title: "Product Management | KBestoreTZ Admin" },
       { name: "description", content: "Manage the KBestoreTZ catalog: search, filter, edit and add products with pricing and stock." },
