@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SlidersHorizontal, Search, X } from "lucide-react";
 import { PublicShell } from "@/components/kb/public-shell";
 import { ProductCard } from "@/components/kb/product-card";
@@ -21,6 +21,11 @@ import { brands, categories, products } from "@/lib/data";
 
 export const Route = createFileRoute("/products/")({
   staticData: { sitemap: true },
+  // Lets the header search box and category links open the store pre-filtered.
+  validateSearch: (search: Record<string, unknown>): { q?: string | undefined; category?: string | undefined } => ({
+    q: typeof search.q === "string" && search.q.trim() ? search.q.trim().slice(0, 80) : undefined,
+    category: typeof search.category === "string" ? search.category : undefined,
+  }),
   component: ProductsPage,
   head: () => ({
     meta: [
@@ -50,11 +55,22 @@ const SORTS = [
 const MAX_PRICE = Math.max(...products.map((p) => p.price));
 
 function useFilters() {
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<string>("all");
+  const initial = Route.useSearch();
+  const [search, setSearch] = useState(initial.q ?? "");
+  const [category, setCategory] = useState<string>(
+    categories.some((c) => c.slug === initial.category) ? (initial.category as string) : "all",
+  );
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, MAX_PRICE]);
   const [sort, setSort] = useState<(typeof SORTS)[number]["value"]>("featured");
+
+  // Follow the address when it changes while the page is already open (e.g. a new header search).
+  useEffect(() => {
+    setSearch(initial.q ?? "");
+    setCategory(
+      categories.some((c) => c.slug === initial.category) ? (initial.category as string) : "all",
+    );
+  }, [initial.q, initial.category]);
 
   const toggleBrand = (brand: string) => {
     setSelectedBrands((prev) =>
