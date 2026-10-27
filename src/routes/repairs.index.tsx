@@ -24,8 +24,11 @@ import {
 import { repairServices, formatTZS } from "@/lib/data";
 
 export const Route = createFileRoute("/repairs/")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Repair services — KBestoreTZ" },
       {
         name: "description",

@@ -22,8 +22,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { orders, salesTrend, categoryPerformance, customerGrowth, repairs, formatTZS } from "@/lib/data";
 
 export const Route = createFileRoute("/admin/analytics")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex, nofollow" },
       { title: "Analytics | KBestoreTZ Admin" },
       { name: "description", content: "Sales trend, category performance, repair turnaround and customer growth analytics." },

@@ -13,8 +13,11 @@ import { cn } from "@/lib/utils";
 import { repairs as seedRepairs, repairStages, technicians, formatTZS } from "@/lib/data";
 
 export const Route = createFileRoute("/admin/repairs")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex, nofollow" },
       { title: "Repair Management | KBestoreTZ Admin" },
       { name: "description", content: "Track and manage repair tickets, technician assignments and stage progress." },

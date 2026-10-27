@@ -28,8 +28,11 @@ import { StatusBadge } from "@/components/kb/status-badge";
 import { repairs, repairStages, formatTZS } from "@/lib/data";
 
 export const Route = createFileRoute("/repairs/track")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Track repair — KBestoreTZ" },
       {
         name: "description",

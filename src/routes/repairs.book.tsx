@@ -28,8 +28,11 @@ import { cn } from "@/lib/utils";
 import { deviceTypes, problemTypes, locations } from "@/lib/data";
 
 export const Route = createFileRoute("/repairs/book")({
+  staticData: { sitemap: true },
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "Book a repair — KBestoreTZ" },
       {
         name: "description",

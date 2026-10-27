@@ -40,8 +40,11 @@ import { useAuth } from "@/lib/auth";
 import { repairs as seedRepairs, repairStages, formatTZS, type Repair, type RepairStage } from "@/lib/data";
 
 export const Route = createFileRoute("/technician")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex, nofollow" },
       { title: "Technician workspace — KBestoreTZ" },
       {

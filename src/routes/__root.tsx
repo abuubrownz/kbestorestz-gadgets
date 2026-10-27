@@ -76,6 +76,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -87,6 +88,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Buy, repair, upgrade and manage devices with KBestoreTZ — Tanzania's premium technology retail and repair platform.",
       },
       { name: "author", content: "KBestoreTZ" },
+      { name: "google-site-verification", content: "oh5YM0wr-zBYpte-hXVed5yU5Jfe0FBYsaWheVfxZnQ" },
       { property: "og:title", content: "KBestoreTZ — Technology Retail & Device Repair" },
       {
         property: "og:description",

@@ -12,8 +12,11 @@ import { cn } from "@/lib/utils";
 import { customersCrm, orders, repairs, formatTZS } from "@/lib/data";
 
 export const Route = createFileRoute("/admin/customers")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex, nofollow" },
       { title: "Customer CRM | KBestoreTZ Admin" },
       { name: "description", content: "View customer profiles, order and repair history, tiers and loyalty progress." },

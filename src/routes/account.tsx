@@ -18,9 +18,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatTZS, orders, products, repairs } from "@/lib/data";
 
 export const Route = createFileRoute("/account")({
+  staticData: { sitemap: false },
   component: AccountPage,
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { title: "My account | KBestoreTZ" },
       { name: "description", content: "Manage your orders, repairs, appointments, warranties and loyalty points." },
       { property: "og:title", content: "My account | KBestoreTZ" },

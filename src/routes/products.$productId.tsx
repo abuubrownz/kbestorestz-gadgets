@@ -12,6 +12,7 @@ import { useCart } from "@/lib/cart";
 import { formatTZS, productById, products, reviews } from "@/lib/data";
 
 export const Route = createFileRoute("/products/$productId")({
+  staticData: { sitemap: true },
   component: ProductDetailPage,
   head: ({ params }) => {
     const product = productById(params.productId);
@@ -21,6 +22,8 @@ export const Route = createFileRoute("/products/$productId")({
       : "This product could not be found in the KBestoreTZ catalogue.";
     return {
       meta: [
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
         { title },
         { name: "description", content: description },
         { property: "og:title", content: title },
