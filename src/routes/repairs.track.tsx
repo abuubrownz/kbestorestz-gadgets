@@ -28,7 +28,7 @@ import { StatusBadge } from "@/components/kb/status-badge";
 import { repairs, repairStages, formatTZS } from "@/lib/data";
 
 export const Route = createFileRoute("/repairs/track")({
-  staticData: { sitemap: true },
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { property: "og:type", content: "website" },
