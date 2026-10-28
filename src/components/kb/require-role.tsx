@@ -39,7 +39,7 @@ export function RequireRole({ allow, children }: { allow: Role[]; children: Reac
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {signedOut
-            ? "This area is restricted to KBestoreTZ staff."
+            ? "Please sign in, or create a free account, to open this page."
             : `Your account (${roleLabels[user.role]}) can't open this area. It requires ${allow
                 .map((r) => roleLabels[r])
                 .join(" or ")} access.`}
