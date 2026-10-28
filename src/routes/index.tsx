@@ -24,6 +24,7 @@ import { PublicShell } from "@/components/kb/public-shell";
 import { ProductCard } from "@/components/kb/product-card";
 import { DeviceVisual } from "@/components/kb/device-visual";
 import heroDevices from "@/assets/hero-devices.jpg";
+import { CONTACT_PHONE_TEL as PHONE_TEL } from "@/lib/contact";
 import { categories, formatTZS, products, repairServices, reviews } from "@/lib/data";
 import { themeFor } from "@/lib/storefront-theme";
 import { cn } from "@/lib/utils";
@@ -116,8 +117,6 @@ const partsShowcase = [
     parts: ["Screens", "Batteries", "Charging ports", "Speakers"],
   },
 ] as const;
-
-const PHONE_TEL = "+255712000445";
 
 const savePercent = (price: number, compareAt: number) => Math.round((1 - price / compareAt) * 100);
 
