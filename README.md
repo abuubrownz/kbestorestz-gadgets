@@ -736,11 +736,55 @@ Continue developing this project in the [Lovable editor](https://lovable.dev/pro
 
 ## Development
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+### Local development with Claude Code
+
+Use Claude Code in VS Code to plan and implement changes. Keep each task on its own branch so production and the Lovable-connected `main` branch only receive reviewed work.
+
+1. Clone the repository and install [Bun](https://bun.sh/docs/installation).
+2. Create a feature branch from the latest `main`:
+
+   ```sh
+   git switch main
+   git pull
+   git switch -c feature/short-description
+   ```
+
+3. Open the repository in VS Code, start Claude Code, and describe the task, acceptance criteria, and any constraints. Review Claude's proposed edits and inspect the resulting diff before committing.
+4. Run the checks locally:
+
+   ```sh
+   bun install --frozen-lockfile
+   bun run build
+   bun run lint
+   bunx tsc --noEmit
+   ```
+
+5. Commit and push the feature branch, then open a pull request targeting `main`:
+
+   ```sh
+   git add .
+   git commit -m "Describe the change"
+   git push -u origin feature/short-description
+   ```
+
+6. Review the pull request on GitHub. Merge only after the required approval and the blocking `build` check pass. Merging to `main` syncs changes to Lovable; deploy behavior depends on the connected hosting configuration.
+
+### Require review on GitHub
+
+Repository administrators must configure this once in **Settings → Rules → Rulesets** (or **Branches → Add branch protection rule**) for `main`:
+
+- Require a pull request before merging and at least one approval.
+- Require the `build` status check from the `CI` workflow.
+- Optionally dismiss stale approvals when new commits are pushed.
+- Block force pushes and branch deletion.
+
+GitHub does not let a pull request author approve their own pull request. Arrange for a second GitHub account/collaborator to review it; if you work alone, you can still review the diff and checks yourself, but merging will require an administrator bypass or a rule without required approval.
+
+The `lint` and `typecheck` jobs currently report results but are non-blocking; make them required only after they are made reliable and blocking in `.github/workflows/ci.yml`. Repository settings cannot be enforced by this repository's files alone.
+
+For local development, run:
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+bun install --frozen-lockfile
+bun run dev
 ```
