@@ -73,6 +73,15 @@
   --color-ink-foreground: var(--ink-foreground);
   --color-ink-muted: var(--ink-muted);
   --color-surface: var(--surface);
+  /* Storefront accent palette: one colour per product family, plus sale red. */
+  --color-cat-phone: var(--cat-phone);
+  --color-cat-laptop: var(--cat-laptop);
+  --color-cat-tablet: var(--cat-tablet);
+  --color-cat-audio: var(--cat-audio);
+  --color-cat-gaming: var(--cat-gaming);
+  --color-cat-home: var(--cat-home);
+  --color-cat-parts: var(--cat-parts);
+  --color-sale: var(--sale);
 }
 
 :root {
@@ -102,6 +111,14 @@
   --ink-foreground: oklch(0.98 0 0);
   --ink-muted: oklch(0.24 0.012 260);
   --surface: oklch(0.985 0.003 260);
+  --cat-phone: oklch(0.58 0.22 258);
+  --cat-laptop: oklch(0.55 0.22 295);
+  --cat-tablet: oklch(0.6 0.12 195);
+  --cat-audio: oklch(0.68 0.18 55);
+  --cat-gaming: oklch(0.6 0.23 8);
+  --cat-home: oklch(0.62 0.16 152);
+  --cat-parts: oklch(0.76 0.16 85);
+  --sale: oklch(0.58 0.23 27);
   --border: oklch(0.918 0.006 260);
   --input: oklch(0.918 0.006 260);
   --ring: oklch(0.58 0.22 258);
@@ -140,6 +157,14 @@
   --warning-foreground: oklch(0.16 0.02 60);
   --info: oklch(0.66 0.19 258);
   --surface: oklch(0.16 0.012 260);
+  --cat-phone: oklch(0.68 0.19 258);
+  --cat-laptop: oklch(0.68 0.19 295);
+  --cat-tablet: oklch(0.72 0.12 195);
+  --cat-audio: oklch(0.76 0.16 55);
+  --cat-gaming: oklch(0.7 0.2 8);
+  --cat-home: oklch(0.72 0.15 152);
+  --cat-parts: oklch(0.82 0.15 85);
+  --sale: oklch(0.7 0.2 27);
   --secondary: oklch(0.279 0.041 260.031);
   --secondary-foreground: oklch(0.984 0.003 247.858);
   --muted: oklch(0.279 0.041 260.031);
@@ -207,6 +232,20 @@
 
 @utility shadow-glow {
   box-shadow: var(--shadow-glow);
+}
+
+/* Thin multicolour rule that ties the category colours together. */
+@utility rainbow-rule {
+  background-image: linear-gradient(
+    90deg,
+    var(--cat-phone),
+    var(--cat-laptop),
+    var(--cat-gaming),
+    var(--cat-audio),
+    var(--cat-parts),
+    var(--cat-home),
+    var(--cat-tablet)
+  );
 }
 
 @utility eyebrow {
