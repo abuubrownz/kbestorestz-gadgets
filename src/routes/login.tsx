@@ -1,5 +1,15 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { CircleCheck, Loader2, MailCheck, ShieldCheck } from "lucide-react";
+import {
+  BellRing,
+  CircleCheck,
+  Eye,
+  EyeOff,
+  Loader2,
+  MailCheck,
+  PackageCheck,
+  ShieldCheck,
+  Wrench,
+} from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { PublicShell } from "@/components/kb/public-shell";
@@ -126,48 +136,108 @@ function LoginPage() {
 
   return (
     <PublicShell>
-      <div className="mx-auto grid max-w-md gap-4 px-4 py-14 sm:px-6">
-        <div className="text-center">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-accent/10 text-accent">
-            <ShieldCheck className="h-5 w-5" />
-          </span>
-          <h1 className="mt-4 font-display text-2xl font-bold">Your KBestoreTZ account</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Sign in, or create an account to track your orders and repairs.
+      <div className="mx-auto grid max-w-5xl gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-2 lg:items-center">
+        <aside className="ink-panel hidden overflow-hidden rounded-3xl lg:block">
+          <div className="rainbow-rule h-1 w-full" aria-hidden />
+          <div className="p-8">
+            <p className="eyebrow text-white/60">KBestoreTZ account</p>
+            <h2 className="mt-2 font-display text-2xl font-bold">
+              One account for your devices, orders and repairs
+            </h2>
+            <ul className="mt-6 space-y-5 text-sm text-white/80">
+              {[
+                { Icon: Wrench, tone: "text-cat-phone", text: "Book a repair and follow every stage from drop-off to collection." },
+                { Icon: PackageCheck, tone: "text-cat-home", text: "See your orders and warranties in one place." },
+                { Icon: BellRing, tone: "text-cat-audio", text: "Get status updates when your device is ready." },
+                { Icon: ShieldCheck, tone: "text-cat-parts", text: "Every account is verified by email, so only you can open yours." },
+              ].map(({ Icon, tone, text }) => (
+                <li key={text} className="flex gap-3">
+                  <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${tone}`} />
+                  <span>{text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </aside>
+
+        <div className="mx-auto grid w-full max-w-md gap-4">
+          <div className="text-center lg:text-left">
+            <h1 className="font-display text-2xl font-bold">
+              {tab === "signin" ? "Welcome back" : "Create your account"}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {tab === "signin"
+                ? "Sign in to continue to your account."
+                : "It takes a minute. We will email you a link to confirm it is you."}
+            </p>
+          </div>
+
+          <Card className="p-6 shadow-card">
+            {verifyEmail ? (
+              <VerifyNotice
+                email={verifyEmail}
+                onDone={() => {
+                  setVerifyEmail(null);
+                  setTab("signin");
+                }}
+              />
+            ) : (
+              <Tabs value={tab} onValueChange={(v) => setTab(v as "signin" | "register")}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="signin">Sign in</TabsTrigger>
+                  <TabsTrigger value="register">Create account</TabsTrigger>
+                </TabsList>
+                <TabsContent value="signin" className="mt-5">
+                  <SignInForm />
+                </TabsContent>
+                <TabsContent value="register" className="mt-5">
+                  <RegisterForm onRegistered={setVerifyEmail} />
+                </TabsContent>
+              </Tabs>
+            )}
+          </Card>
+
+          <p className="text-center text-xs text-muted-foreground lg:text-left">
+            Staff (technicians and administrators) sign in here too. Their accounts are set up by
+            KBestoreTZ management. Creating an account here always gives customer access.
           </p>
         </div>
-
-        <Card className="p-6 shadow-card">
-          {verifyEmail ? (
-            <VerifyNotice
-              email={verifyEmail}
-              onDone={() => {
-                setVerifyEmail(null);
-                setTab("signin");
-              }}
-            />
-          ) : (
-            <Tabs value={tab} onValueChange={(v) => setTab(v as "signin" | "register")}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign in</TabsTrigger>
-                <TabsTrigger value="register">Create account</TabsTrigger>
-              </TabsList>
-              <TabsContent value="signin" className="mt-5">
-                <SignInForm />
-              </TabsContent>
-              <TabsContent value="register" className="mt-5">
-                <RegisterForm onRegistered={setVerifyEmail} />
-              </TabsContent>
-            </Tabs>
-          )}
-        </Card>
-
-        <p className="text-center text-xs text-muted-foreground">
-          Staff accounts (technician, administrator) are created by KBestoreTZ management. Creating
-          an account here always gives customer access.
-        </p>
       </div>
     </PublicShell>
+  );
+}
+
+function PasswordInput({
+  id,
+  value,
+  onChange,
+  autoComplete,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  autoComplete: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        type={show ? "text" : "password"}
+        autoComplete={autoComplete}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="pr-10"
+      />
+      <button
+        type="button"
+        onClick={() => setShow((v) => !v)}
+        aria-label={show ? "Hide password" : "Show password"}
+        className="absolute top-1/2 right-2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
   );
 }
 
@@ -237,12 +307,11 @@ function SignInForm() {
       </div>
       <div className="grid gap-2">
         <Label htmlFor="si-password">Password</Label>
-        <Input
+        <PasswordInput
           id="si-password"
-          type="password"
           autoComplete="current-password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={setPassword}
         />
         <FieldError message={errors["password"]} />
       </div>
@@ -353,23 +422,22 @@ function RegisterForm({ onRegistered }: { onRegistered: (email: string) => void 
       </div>
       <div className="grid gap-2">
         <Label htmlFor="rg-password">Password</Label>
-        <Input
+        <PasswordInput
           id="rg-password"
-          type="password"
           autoComplete="new-password"
           value={values.password}
-          onChange={set("password")}
+          onChange={(v) => setValues((cur) => ({ ...cur, password: v }))}
         />
+        <p className="text-xs text-muted-foreground">At least 8 characters.</p>
         <FieldError message={errors["password"]} />
       </div>
       <div className="grid gap-2">
         <Label htmlFor="rg-confirm">Confirm password</Label>
-        <Input
+        <PasswordInput
           id="rg-confirm"
-          type="password"
           autoComplete="new-password"
           value={values.confirm}
-          onChange={set("confirm")}
+          onChange={(v) => setValues((cur) => ({ ...cur, confirm: v }))}
         />
         <FieldError message={errors["confirm"]} />
       </div>
@@ -384,9 +452,6 @@ function RegisterForm({ onRegistered }: { onRegistered: (email: string) => void 
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         Create account
       </Button>
-      <p className="text-center text-xs text-muted-foreground">
-        We will email you a link to confirm your address before you can sign in.
-      </p>
     </form>
   );
 }
