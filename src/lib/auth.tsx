@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -59,6 +60,12 @@ export type RegisterInput = {
 };
 
 export type AuthResult = { ok: true } | { ok: false; code: AuthErrorCode };
+export type PhoneMfaChallenge = {
+  factorId: string;
+  challengeId: string;
+  phone: string;
+  isEnrollment: boolean;
+};
 
 export type AuthErrorCode =
   | "invalid_credentials"
@@ -66,13 +73,19 @@ export type AuthErrorCode =
   | "weak_password"
   | "rate_limited"
   | "network"
+  | "invalid_otp"
   | "unknown";
 
 type AuthContextValue = {
   user: AuthUser | null;
+  phoneMfaChallenge: PhoneMfaChallenge | null;
+  phoneMfaError: string | null;
   /** False until the stored session (and its role) has been read on the client. */
   ready: boolean;
   signInWithPassword: (email: string, password: string) => Promise<AuthResult>;
+  verifyPhoneMfa: (code: string) => Promise<AuthResult>;
+  resendPhoneMfa: () => Promise<AuthResult>;
+  cancelPhoneMfa: () => Promise<void>;
   /** Creates the account and sends the confirmation email. The user is NOT signed in yet. */
   register: (input: RegisterInput) => Promise<AuthResult>;
   resendConfirmation: (email: string) => Promise<AuthResult>;
@@ -84,7 +97,11 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function toErrorCode(error: { message?: string; code?: string; status?: number }): AuthErrorCode {
+function toErrorCode(error: {
+  message?: string | undefined;
+  code?: string | undefined;
+  status?: number | undefined;
+}): AuthErrorCode {
   const code = error.code ?? "";
   const message = (error.message ?? "").toLowerCase();
   if (code === "email_not_confirmed" || message.includes("email not confirmed")) {
@@ -126,34 +143,127 @@ async function loadAuthUser(session: Session): Promise<AuthUser> {
   };
 }
 
+function normalizePhone(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const digits = value.replace(/[\s\-()]/g, "");
+  const match = /^(?:\+?255|0)?([67]\d{8})$/.exec(digits);
+  return match ? `+255${match[1]}` : null;
+}
+
+function maskPhone(phone: string): string {
+  return `${phone.slice(0, 4)} ••• ••• ${phone.slice(-3)}`;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [phoneMfaChallenge, setPhoneMfaChallenge] = useState<PhoneMfaChallenge | null>(null);
+  const [phoneMfaError, setPhoneMfaError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const challengeRef = useRef<PhoneMfaChallenge | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    let activeChallengePromise: Promise<PhoneMfaChallenge> | null = null;
+
+    async function beginPhoneMfa(session: Session): Promise<PhoneMfaChallenge> {
+      const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+      if (factorsError) throw factorsError;
+
+      const verifiedFactor = factorsData.phone[0];
+      const unverifiedFactor = factorsData.all.find(
+        (factor) => factor.factor_type === "phone" && factor.status === "unverified",
+      );
+      let factorId = verifiedFactor?.id ?? unverifiedFactor?.id;
+      let isEnrollment = Boolean(unverifiedFactor);
+
+      const metadata = session.user.user_metadata as { phone?: unknown } | null;
+      let phone = normalizePhone(metadata?.phone);
+      if (!phone) {
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("phone")
+          .eq("id", session.user.id)
+          .maybeSingle();
+        if (profileError) throw profileError;
+        phone = normalizePhone(profile?.phone);
+      }
+
+      if (!factorId) {
+        if (!phone) {
+          throw new Error("A valid Tanzanian mobile number is required to set up phone verification.");
+        }
+
+        const { data: enrolled, error: enrollError } = await supabase.auth.mfa.enroll({
+          factorType: "phone",
+          phone,
+        });
+        if (enrollError) throw enrollError;
+        factorId = enrolled.id;
+        phone = enrolled.phone;
+        isEnrollment = true;
+      }
+
+      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId,
+      });
+      if (challengeError) throw challengeError;
+
+      return {
+        factorId,
+        challengeId: challenge.id,
+        phone: phone
+          ? maskPhone(phone)
+          : isEnrollment
+            ? "the phone number you provided"
+            : "your verified number",
+        isEnrollment,
+      };
+    }
 
     async function apply(session: Session | null) {
       if (!session) {
         if (!cancelled) {
           setUser(null);
+          setPhoneMfaChallenge(null);
+          setPhoneMfaError(null);
+          challengeRef.current = null;
+          activeChallengePromise = null;
           setReady(true);
         }
         return;
       }
       try {
+        const { data: assurance, error: assuranceError } =
+          await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (assuranceError) throw assuranceError;
+
+        if (assurance.currentLevel !== "aal2") {
+          setUser(null);
+          setPhoneMfaError(null);
+          if (!challengeRef.current) {
+            activeChallengePromise ??= beginPhoneMfa(session);
+            challengeRef.current = await activeChallengePromise;
+          }
+          if (!cancelled) setPhoneMfaChallenge(challengeRef.current);
+          return;
+        }
+
+        challengeRef.current = null;
+        activeChallengePromise = null;
+        if (!cancelled) {
+          setPhoneMfaChallenge(null);
+          setPhoneMfaError(null);
+        }
         const next = await loadAuthUser(session);
         if (!cancelled) setUser(next);
       } catch {
-        // Could not read the profile or roles: stay signed in as the lowest role.
+        activeChallengePromise = null;
         if (!cancelled) {
-          setUser({
-            id: session.user.id,
-            name: session.user.email?.split("@")[0] ?? "Customer",
-            email: session.user.email ?? "",
-            phone: null,
-            role: "customer",
-          });
+          setUser(null);
+          setPhoneMfaChallenge(null);
+          setPhoneMfaError(
+            "We could not start phone verification. Check your phone number and SMS setup, then sign in again.",
+          );
         }
       } finally {
         if (!cancelled) setReady(true);
@@ -185,6 +295,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return error ? ({ ok: false, code: toErrorCode(error) } as const) : ({ ok: true } as const);
     } catch {
       return { ok: false, code: "network" } as const;
+    }
+  }, []);
+
+  const verifyPhoneMfa = useCallback(async (code: string): Promise<AuthResult> => {
+    const challenge = challengeRef.current;
+    if (!challenge || !/^\d{6}$/.test(code)) return { ok: false, code: "invalid_otp" };
+
+    try {
+      const { error } = await supabase.auth.mfa.verify({
+        factorId: challenge.factorId,
+        challengeId: challenge.challengeId,
+        code,
+      });
+      if (error) {
+        const code = toErrorCode(error);
+        return { ok: false, code: code === "rate_limited" ? code : "invalid_otp" };
+      }
+
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session) return { ok: false, code: "network" };
+      const { data: assurance, error: assuranceError } =
+        await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (assuranceError || assurance.currentLevel !== "aal2") {
+        return { ok: false, code: "unknown" };
+      }
+
+      const verifiedUser = await loadAuthUser(sessionData.session);
+      challengeRef.current = null;
+      setPhoneMfaChallenge(null);
+      setPhoneMfaError(null);
+      setUser(verifiedUser);
+      return { ok: true };
+    } catch {
+      return { ok: false, code: "network" };
+    }
+  }, []);
+
+  const resendPhoneMfa = useCallback(async (): Promise<AuthResult> => {
+    const challenge = challengeRef.current;
+    if (!challenge) return { ok: false, code: "unknown" };
+    try {
+      const { data, error } = await supabase.auth.mfa.challenge({
+        factorId: challenge.factorId,
+      });
+      if (error) return { ok: false, code: toErrorCode(error) };
+      const updated = { ...challenge, challengeId: data.id };
+      challengeRef.current = updated;
+      setPhoneMfaChallenge(updated);
+      setPhoneMfaError(null);
+      return { ok: true };
+    } catch {
+      return { ok: false, code: "network" };
+    }
+  }, []);
+
+  const cancelPhoneMfa = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      challengeRef.current = null;
+      setPhoneMfaChallenge(null);
+      setPhoneMfaError(null);
+      setUser(null);
     }
   }, []);
 
@@ -243,7 +416,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await supabase.auth.signOut();
     } finally {
+      challengeRef.current = null;
       setUser(null);
+      setPhoneMfaChallenge(null);
+      setPhoneMfaError(null);
     }
   }, []);
 
@@ -258,8 +434,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       user,
+      phoneMfaChallenge,
+      phoneMfaError,
       ready,
       signInWithPassword,
+      verifyPhoneMfa,
+      resendPhoneMfa,
+      cancelPhoneMfa,
       register,
       resendConfirmation,
       sendPasswordReset,
@@ -269,8 +450,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [
       user,
+      phoneMfaChallenge,
+      phoneMfaError,
       ready,
       signInWithPassword,
+      verifyPhoneMfa,
+      resendPhoneMfa,
+      cancelPhoneMfa,
       register,
       resendConfirmation,
       sendPasswordReset,

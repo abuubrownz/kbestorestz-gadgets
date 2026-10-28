@@ -1,0 +1,2 @@
+export const CONTACT_PHONE_DISPLAY = "+255 713 134 116";
+export const CONTACT_PHONE_TEL = "+255713134116";

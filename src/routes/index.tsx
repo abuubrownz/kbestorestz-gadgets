@@ -26,6 +26,7 @@ import { DeviceVisual } from "@/components/kb/device-visual";
 import heroDevices from "@/assets/hero-devices.jpg";
 import { categories, formatTZS, products, repairServices, reviews } from "@/lib/data";
 import { themeFor } from "@/lib/storefront-theme";
+import { CONTACT_PHONE_TEL } from "@/lib/contact";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -116,8 +117,6 @@ const partsShowcase = [
     parts: ["Screens", "Batteries", "Charging ports", "Speakers"],
   },
 ] as const;
-
-const PHONE_TEL = "+255712000445";
 
 const savePercent = (price: number, compareAt: number) => Math.round((1 - price / compareAt) * 100);
 
@@ -411,7 +410,7 @@ function Home() {
                 our front desk before you pay.
               </p>
             </div>
-            <a href={`tel:${PHONE_TEL}`}>
+            <a href={`tel:${CONTACT_PHONE_TEL}`}>
               <Button className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
                 <PhoneCall className="h-4 w-4" /> Call for a quote
               </Button>

@@ -8,6 +8,7 @@ import {
   MailCheck,
   PackageCheck,
   ShieldCheck,
+  Smartphone,
   Wrench,
 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
@@ -107,6 +108,8 @@ function messageFor(code: AuthErrorCode): string {
       return "That password is too weak. Use at least 8 characters with letters and numbers.";
     case "rate_limited":
       return "Too many attempts. Please wait a few minutes and try again.";
+    case "invalid_otp":
+      return "That code is incorrect or expired. Check your SMS and try again.";
     case "network":
       return "We could not reach the server. Check your connection and try again.";
     default:
@@ -123,7 +126,7 @@ function FieldError({ message }: { message?: string | undefined }) {
 }
 
 function LoginPage() {
-  const { user, ready } = useAuth();
+  const { user, ready, phoneMfaChallenge, phoneMfaError } = useAuth();
   const router = useRouter();
   const { redirect } = Route.useSearch();
   const [tab, setTab] = useState<"signin" | "register">("signin");
@@ -149,7 +152,7 @@ function LoginPage() {
                 { Icon: Wrench, tone: "text-cat-phone", text: "Book a repair and follow every stage from drop-off to collection." },
                 { Icon: PackageCheck, tone: "text-cat-home", text: "See your orders and warranties in one place." },
                 { Icon: BellRing, tone: "text-cat-audio", text: "Get status updates when your device is ready." },
-                { Icon: ShieldCheck, tone: "text-cat-parts", text: "Every account is verified by email, so only you can open yours." },
+                { Icon: ShieldCheck, tone: "text-cat-parts", text: "Email confirmation and phone codes help keep your account secure." },
               ].map(({ Icon, tone, text }) => (
                 <li key={text} className="flex gap-3">
                   <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${tone}`} />
@@ -181,6 +184,8 @@ function LoginPage() {
                   setTab("signin");
                 }}
               />
+            ) : phoneMfaChallenge || phoneMfaError ? (
+              <PhoneMfaForm />
             ) : (
               <Tabs value={tab} onValueChange={(v) => setTab(v as "signin" | "register")}>
                 <TabsList className="grid w-full grid-cols-2">
@@ -204,6 +209,101 @@ function LoginPage() {
         </div>
       </div>
     </PublicShell>
+  );
+}
+
+function PhoneMfaForm() {
+  const {
+    phoneMfaChallenge,
+    phoneMfaError,
+    verifyPhoneMfa,
+    resendPhoneMfa,
+    cancelPhoneMfa,
+  } = useAuth();
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setInfo(null);
+    if (!/^\d{6}$/.test(code)) {
+      setError("Enter the six-digit code from your SMS.");
+      return;
+    }
+
+    setBusy(true);
+    const result = await verifyPhoneMfa(code);
+    setBusy(false);
+    if (!result.ok) setError(messageFor(result.code));
+  }
+
+  async function onResend() {
+    setBusy(true);
+    setError(null);
+    const result = await resendPhoneMfa();
+    setBusy(false);
+    if (result.ok) {
+      setCode("");
+      setInfo("A new verification code was sent.");
+    } else {
+      setError(messageFor(result.code));
+    }
+  }
+
+  return (
+    <div className="grid gap-4">
+      <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-accent/10 text-accent">
+        <Smartphone className="h-5 w-5" />
+      </span>
+      <div className="text-center">
+        <h2 className="font-display text-lg font-bold">Verify your phone</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {phoneMfaChallenge
+            ? `${phoneMfaChallenge.isEnrollment ? "Verify and secure your account" : "Enter the sign-in code"} sent to ${phoneMfaChallenge.phone}.`
+            : phoneMfaError}
+        </p>
+      </div>
+
+      {phoneMfaChallenge ? (
+        <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+          <div className="grid gap-2">
+            <Label htmlFor="mfa-code">Six-digit code</Label>
+            <Input
+              id="mfa-code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              value={code}
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+              autoFocus
+            />
+          </div>
+          {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+          {info ? <p role="status" className="text-sm text-muted-foreground">{info}</p> : null}
+          <Button type="submit" className="w-full" disabled={busy || code.length !== 6}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Verify and continue
+          </Button>
+          <Button type="button" variant="outline" onClick={onResend} disabled={busy}>
+            Send a new code
+          </Button>
+        </form>
+      ) : null}
+
+      {!phoneMfaChallenge && phoneMfaError ? (
+        <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
+          Phone verification is required to sign in. Please try again later or contact support.
+        </p>
+      ) : null}
+      <Button type="button" variant="ghost" onClick={() => void cancelPhoneMfa()} disabled={busy}>
+        Use a different account
+      </Button>
+    </div>
   );
 }
 
