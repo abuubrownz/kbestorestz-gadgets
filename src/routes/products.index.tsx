@@ -23,8 +23,8 @@ export const Route = createFileRoute("/products/")({
   staticData: { sitemap: true },
   // Lets the header search box and category links open the store pre-filtered.
   validateSearch: (search: Record<string, unknown>): { q?: string | undefined; category?: string | undefined } => ({
-    q: typeof search.q === "string" && search.q.trim() ? search.q.trim().slice(0, 80) : undefined,
-    category: typeof search.category === "string" ? search.category : undefined,
+    q: typeof search["q"] === "string" && search["q"].trim() ? search["q"].trim().slice(0, 80) : undefined,
+    category: typeof search["category"] === "string" ? search["category"] : undefined,
   }),
   component: ProductsPage,
   head: () => ({

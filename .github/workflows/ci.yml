@@ -32,8 +32,8 @@ jobs:
           exit $code
 
   # Reporting only for now. Existing code has not been through Prettier
-  # (enforced via ESLint) and has not been strictly typechecked. Remove
-  # `continue-on-error` from each job once a one-time cleanup makes it pass.
+  # (enforced via ESLint). Remove `continue-on-error` once the one-time format
+  # sweep in docs/ENGINEERING_STATUS.md has landed.
   lint:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -43,9 +43,9 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run lint
 
+  # Blocking: the codebase typechecks, and new work must keep it that way.
   typecheck:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2

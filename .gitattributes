@@ -1,0 +1,8 @@
+# Keep one line-ending convention in the repository (LF), whichever OS a
+# contributor or coding agent uses. Prettier is set to "auto" so a Windows
+# checkout with CRLF still passes lint until it is next refreshed.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
