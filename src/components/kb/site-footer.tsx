@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Facebook, Instagram, Mail, MapPin, Phone, Twitter } from "lucide-react";
 import { categories, locations } from "@/lib/data";
 import { themeFor } from "@/lib/storefront-theme";
+import { BrandLogo } from "@/components/kb/brand-logo";
 import { cn } from "@/lib/utils";
 
 export function SiteFooter() {
@@ -10,14 +11,7 @@ export function SiteFooter() {
       <div className="rainbow-rule h-1 w-full" aria-hidden />
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-5">
         <div className="sm:col-span-2 lg:col-span-1">
-          <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/10 font-display text-sm font-bold">
-              KB
-            </span>
-            <span className="font-display text-base font-bold">
-              KBestore<span className="text-accent">TZ</span>
-            </span>
-          </div>
+          <BrandLogo tone="dark" />
           <p className="mt-4 max-w-xs text-sm text-white/60">
             East Africa's trusted technology destination — buy, repair, upgrade and manage every
             device from one platform.

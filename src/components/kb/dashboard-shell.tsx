@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/kb/brand-logo";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Bell, Menu } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -69,12 +70,7 @@ function DashboardFrame({
     <div className="flex min-h-screen bg-surface">
       <aside className="ink-panel sticky top-0 hidden h-screen w-64 shrink-0 flex-col p-5 lg:flex">
         <Link to="/" className="flex items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/10 font-display text-sm font-bold text-white">
-            KB
-          </span>
-          <span className="font-display text-sm font-bold text-white">
-            KBestore<span className="text-accent">TZ</span>
-          </span>
+          <BrandLogo tone="dark" markClassName="h-8 w-8" textClassName="text-sm" />
         </Link>
         <p className="eyebrow mt-6 mb-3 text-white/40">{workspace}</p>
         {navList()}
