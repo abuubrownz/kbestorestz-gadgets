@@ -21,6 +21,7 @@ import { roleHome, roleLabels, useAuth } from "@/lib/auth";
 import { CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL } from "@/lib/contact";
 import { categories } from "@/lib/data";
 import { familyTheme, themeFor } from "@/lib/storefront-theme";
+import { BrandLogo } from "@/components/kb/brand-logo";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -124,13 +125,8 @@ export function SiteHeader() {
       <header className="sticky top-0 z-50 border-b border-border/70 bg-background/90 backdrop-blur-xl">
         <div className="rainbow-rule h-0.5 w-full" aria-hidden />
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:gap-4 sm:px-6">
-          <Link to="/" className="flex shrink-0 items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-lg ink-panel font-display text-sm font-bold">
-              KB
-            </span>
-            <span className="font-display text-base font-bold tracking-tight">
-              KBestore<span className="text-accent">TZ</span>
-            </span>
+          <Link to="/" className="flex shrink-0 items-center" aria-label="kbestorestz home">
+            <BrandLogo />
           </Link>
 
           <SearchBox
