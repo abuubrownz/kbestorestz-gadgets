@@ -20,7 +20,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: bun run build
+      - name: Build
+        run: |
+          set +e
+          bun run build 2>&1 | tee build.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            # Surface the error as an annotation so it is readable without log access.
+            echo "::error title=Build failed::$(grep -v '^\s*$' build.log | tail -n 25 | sed 's/%/%25/g' | tr '\n' '|')"
+          fi
+          exit $code
 
   # Reporting only for now. Existing code has not been through Prettier
   # (enforced via ESLint) and has not been strictly typechecked. Remove
