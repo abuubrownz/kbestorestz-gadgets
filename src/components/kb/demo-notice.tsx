@@ -1,8 +1,5 @@
 import { TriangleAlert } from "lucide-react";
-
-/** Front desk line shown in the footer of the live site. */
-export const FRONT_DESK_PHONE = "+255 712 000 445";
-const FRONT_DESK_TEL = "+255712000445";
+import { CONTACT_PHONE_DISPLAY as FRONT_DESK_PHONE, CONTACT_PHONE_TEL as FRONT_DESK_TEL } from "@/lib/contact";
 
 /**
  * Site-wide notice while the store has no backend: orders and repair bookings

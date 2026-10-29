@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Facebook, Instagram, Mail, MapPin, Phone, Twitter } from "lucide-react";
 import { categories, locations } from "@/lib/data";
+import { CONTACT_EMAIL, CONTACT_HOURS, CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL } from "@/lib/contact";
 import { themeFor } from "@/lib/storefront-theme";
 import { cn } from "@/lib/utils";
 
@@ -100,12 +101,15 @@ export function SiteFooter() {
           <h3 className="eyebrow text-white/50">Contact</h3>
           <ul className="mt-4 space-y-3 text-sm text-white/70">
             <li className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-cat-home" /> +255 712 000 445
+              <Phone className="h-4 w-4 text-cat-home" />{" "}
+              <a href={`tel:${CONTACT_PHONE_TEL}`} className="hover:text-white">
+                {CONTACT_PHONE_DISPLAY}
+              </a>
             </li>
             <li className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-cat-phone" /> support@kbestoretz.co.tz
+              <Mail className="h-4 w-4 text-cat-phone" /> {CONTACT_EMAIL}
             </li>
-            <li className="text-white/50">Mon – Sat · 08:30 – 19:00 EAT</li>
+            <li className="text-white/50">{CONTACT_HOURS}</li>
           </ul>
         </div>
       </div>

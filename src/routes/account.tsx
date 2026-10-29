@@ -38,8 +38,8 @@ const myOrders = orders.filter((o) => o.customer === CUSTOMER_NAME).concat(order
 const myRepairs = repairs.filter((r) => r.customer === CUSTOMER_NAME).concat(repairs.slice(2, 3));
 
 const appointments = [
-  { id: "AP-2201", type: "Repair drop-off", device: "iPhone 13 Pro", date: "Aug 9, 2026", time: "10:30 AM", location: "Dar es Salaam — Samora Ave" },
-  { id: "AP-2198", type: "Consultation", device: "MacBook Pro 14\"", date: "Aug 12, 2026", time: "2:00 PM", location: "Arusha — Sokoine Rd" },
+  { id: "AP-2201", type: "Repair drop-off", device: "iPhone 13 Pro", date: "Aug 9, 2026", time: "10:30 AM", location: "Dar es Salaam — Savei Complex" },
+  { id: "AP-2198", type: "Consultation", device: "MacBook Pro 14\"", date: "Aug 12, 2026", time: "2:00 PM", location: "Arusha" },
 ];
 
 const warranties = [

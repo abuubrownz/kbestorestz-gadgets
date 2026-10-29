@@ -611,7 +611,7 @@ export const reviews = [
 ];
 
 export const locations = [
-  { city: "Dar es Salaam", detail: "Samora Ave, Ilala — flagship store & repair lab" },
-  { city: "Arusha", detail: "Sokoine Rd — sales & express repair" },
-  { city: "Mwanza", detail: "Kenyatta Rd — sales & pickup point" },
+  { city: "Dar es Salaam", detail: "Savei Complex — flagship store & repair lab" },
+  { city: "Arusha", detail: "Sales & express repair" },
+  { city: "Mwanza", detail: "Sales & pickup point" },
 ];

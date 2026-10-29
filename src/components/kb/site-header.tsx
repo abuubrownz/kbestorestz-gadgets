@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useCart } from "@/lib/cart";
 import { roleHome, roleLabels, useAuth } from "@/lib/auth";
+import { CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL } from "@/lib/contact";
 import { categories } from "@/lib/data";
 import { familyTheme, themeFor } from "@/lib/storefront-theme";
 import { cn } from "@/lib/utils";
@@ -31,8 +32,6 @@ const nav = [
 ] as const;
 
 const PartsIcon = familyTheme["spare-parts"].icon;
-const PHONE_LABEL = "+255 712 000 445";
-const PHONE_TEL = "+255712000445";
 
 function UtilityBar() {
   return (
@@ -53,8 +52,8 @@ function UtilityBar() {
           <Link to="/repairs/track" className="hover:text-white">
             Track repair
           </Link>
-          <a href={`tel:${PHONE_TEL}`} className="flex items-center gap-1.5 hover:text-white">
-            <Phone className="h-3.5 w-3.5" /> {PHONE_LABEL}
+          <a href={`tel:${CONTACT_PHONE_TEL}`} className="flex items-center gap-1.5 hover:text-white">
+            <Phone className="h-3.5 w-3.5" /> {CONTACT_PHONE_DISPLAY}
           </a>
         </div>
       </div>
