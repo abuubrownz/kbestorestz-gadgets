@@ -9,6 +9,8 @@ import {
   Heart,
 } from "lucide-react";
 import { PublicShell } from "@/components/kb/public-shell";
+import { RequireRole } from "@/components/kb/require-role";
+import { useAuth } from "@/lib/auth";
 import { DeviceVisual } from "@/components/kb/device-visual";
 import { StatusBadge } from "@/components/kb/status-badge";
 import { Button } from "@/components/ui/button";
@@ -38,7 +40,7 @@ const myOrders = orders.filter((o) => o.customer === CUSTOMER_NAME).concat(order
 const myRepairs = repairs.filter((r) => r.customer === CUSTOMER_NAME).concat(repairs.slice(2, 3));
 
 const appointments = [
-  { id: "AP-2201", type: "Repair drop-off", device: "iPhone 13 Pro", date: "Aug 9, 2026", time: "10:30 AM", location: "Dar es Salaam — Samora Ave" },
+  { id: "AP-2201", type: "Repair drop-off", device: "iPhone 13 Pro", date: "Aug 9, 2026", time: "10:30 AM", location: "Dar es Salaam — Savei Complex" },
   { id: "AP-2198", type: "Consultation", device: "MacBook Pro 14\"", date: "Aug 12, 2026", time: "2:00 PM", location: "Arusha — Sokoine Rd" },
 ];
 
@@ -83,12 +85,26 @@ function KpiCard({
 
 function AccountPage() {
   return (
+    <RequireRole allow={["customer", "technician", "admin"]}>
+      <AccountContent />
+    </RequireRole>
+  );
+}
+
+function AccountContent() {
+  const { user } = useAuth();
+  const firstName = user?.name.split(" ")[0] ?? "there";
+  return (
     <PublicShell>
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
         <header className="mb-8 flex flex-col gap-1">
           <p className="eyebrow text-accent">My account</p>
-          <h1 className="font-display text-3xl font-bold tracking-tight">Welcome back, {CUSTOMER_NAME.split(" ")[0]}</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight">Welcome back, {firstName}</h1>
           <p className="text-muted-foreground">Track your orders, repairs, warranties and loyalty rewards in one place.</p>
+          <p className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
+            Sample data: the orders, repairs and points below are examples while online ordering is
+            being connected. Your real activity will appear here once it goes live.
+          </p>
         </header>
 
         <Tabs defaultValue="overview">

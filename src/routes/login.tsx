@@ -1,13 +1,24 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { ShieldCheck, TriangleAlert } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import {
+  BellRing,
+  CircleCheck,
+  Eye,
+  EyeOff,
+  Loader2,
+  MailCheck,
+  PackageCheck,
+  ShieldCheck,
+  Wrench,
+} from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { z } from "zod";
 import { PublicShell } from "@/components/kb/public-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { roleHome, roleLabels, useAuth, type Role } from "@/lib/auth";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { roleHome, useAuth, type AuthErrorCode } from "@/lib/auth";
 
 /** Only allow same-site relative paths as a post-login destination. */
 function safeRedirect(value: unknown): string | undefined {
@@ -27,103 +38,452 @@ export const Route = createFileRoute("/login")({
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex, nofollow" },
-      { title: "Sign in | KBestoreTZ" },
-      { name: "description", content: "Sign in to your KBestoreTZ account or staff workspace." },
-      { property: "og:title", content: "Sign in | KBestoreTZ" },
-      { property: "og:description", content: "Sign in to your KBestoreTZ account or staff workspace." },
+      { title: "Sign in or create an account | KBestoreTZ" },
+      {
+        name: "description",
+        content: "Sign in to your KBestoreTZ account, or create one to track orders and repairs.",
+      },
+      { property: "og:title", content: "Sign in or create an account | KBestoreTZ" },
+      {
+        property: "og:description",
+        content: "Sign in to your KBestoreTZ account, or create one to track orders and repairs.",
+      },
     ],
   }),
   component: LoginPage,
 });
 
-const roleHints: Record<Role, string> = {
-  admin: "Full store console: products, repairs, inventory, customers and analytics.",
-  technician: "Technician workspace for assigned repairs only.",
-  customer: "Storefront, orders and repair tracking.",
-};
+/** Accepts 0713…, 713…, +255713… and returns +255713134116, or null if it is not a Tanzanian mobile. */
+function normalizePhone(value: string): string | null {
+  const digits = value.replace(/[\s\-()]/g, "");
+  const match = /^(?:\+?255|0)?([67]\d{8})$/.exec(digits);
+  return match ? `+255${match[1]}` : null;
+}
+
+const emailSchema = z.string().trim().toLowerCase().email("Enter a valid email address.").max(254);
+const passwordSchema = z
+  .string()
+  .min(8, "Use at least 8 characters.")
+  .max(72, "Use 72 characters or fewer.");
+
+const signInSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, "Enter your password.").max(72),
+});
+
+const registerSchema = z
+  .object({
+    fullName: z.string().trim().min(2, "Enter your full name.").max(100),
+    phone: z.string().refine((v) => normalizePhone(v) !== null, {
+      message: "Enter a Tanzanian mobile number, e.g. 0713 134 116.",
+    }),
+    email: emailSchema,
+    password: passwordSchema,
+    confirm: z.string(),
+  })
+  .refine((v) => v.password === v.confirm, {
+    path: ["confirm"],
+    message: "Passwords do not match.",
+  });
+
+type FieldErrors = Record<string, string | undefined>;
+
+function collectErrors(error: z.ZodError): FieldErrors {
+  const out: FieldErrors = {};
+  for (const issue of error.issues) {
+    const key = String(issue.path[0] ?? "form");
+    out[key] ??= issue.message;
+  }
+  return out;
+}
+
+function messageFor(code: AuthErrorCode): string {
+  switch (code) {
+    case "invalid_credentials":
+      return "Email or password is incorrect.";
+    case "email_not_confirmed":
+      return "Please confirm your email first. Check your inbox for the link we sent.";
+    case "weak_password":
+      return "That password is too weak. Use at least 8 characters with letters and numbers.";
+    case "rate_limited":
+      return "Too many attempts. Please wait a few minutes and try again.";
+    case "network":
+      return "We could not reach the server. Check your connection and try again.";
+    default:
+      return "Something went wrong. Please try again.";
+  }
+}
+
+function FieldError({ message }: { message?: string | undefined }) {
+  return message ? (
+    <p role="alert" className="text-xs text-destructive">
+      {message}
+    </p>
+  ) : null;
+}
 
 function LoginPage() {
-  const { signIn } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
   const { redirect } = Route.useSearch();
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("customer");
+  const [tab, setTab] = useState<"signin" | "register">("signin");
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
 
-  function onSubmit(event: FormEvent) {
-    event.preventDefault();
-    const cleanEmail = email.trim();
-    if (!cleanEmail) return;
-    const name = (cleanEmail.split("@")[0] ?? "Guest").replace(/[._-]+/g, " ") || "Guest";
-    signIn({
-      name: name.replace(/\b\w/g, (c) => c.toUpperCase()),
-      email: cleanEmail,
-      role,
-    });
-    router.history.push(redirect ?? roleHome[role]);
-  }
+  // Once a session exists (just signed in, or already signed in), leave this page.
+  useEffect(() => {
+    if (ready && user) router.history.push(redirect ?? roleHome[user.role]);
+  }, [ready, user, redirect, router]);
 
   return (
     <PublicShell>
-      <div className="mx-auto grid max-w-md gap-4 px-4 py-14 sm:px-6">
-        <div className="text-center">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-accent/10 text-accent">
-            <ShieldCheck className="h-5 w-5" />
-          </span>
-          <h1 className="mt-4 font-display text-2xl font-bold">Sign in</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Access your account or the KBestoreTZ staff workspace.
-          </p>
-        </div>
+      <div className="mx-auto grid max-w-5xl gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-2 lg:items-center">
+        <aside className="ink-panel hidden overflow-hidden rounded-3xl lg:block">
+          <div className="rainbow-rule h-1 w-full" aria-hidden />
+          <div className="p-8">
+            <p className="eyebrow text-white/60">KBestoreTZ account</p>
+            <h2 className="mt-2 font-display text-2xl font-bold">
+              One account for your devices, orders and repairs
+            </h2>
+            <ul className="mt-6 space-y-5 text-sm text-white/80">
+              {[
+                { Icon: Wrench, tone: "text-cat-phone", text: "Book a repair and follow every stage from drop-off to collection." },
+                { Icon: PackageCheck, tone: "text-cat-home", text: "See your orders and warranties in one place." },
+                { Icon: BellRing, tone: "text-cat-audio", text: "Get status updates when your device is ready." },
+                { Icon: ShieldCheck, tone: "text-cat-parts", text: "Every account is verified by email, so only you can open yours." },
+              ].map(({ Icon, tone, text }) => (
+                <li key={text} className="flex gap-3">
+                  <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${tone}`} />
+                  <span>{text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </aside>
 
-        <Card className="p-6 shadow-card">
-          <form onSubmit={onSubmit} className="grid gap-5">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+        <div className="mx-auto grid w-full max-w-md gap-4">
+          <div className="text-center lg:text-left">
+            <h1 className="font-display text-2xl font-bold">
+              {tab === "signin" ? "Welcome back" : "Create your account"}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {tab === "signin"
+                ? "Sign in to continue to your account."
+                : "It takes a minute. We will email you a link to confirm it is you."}
+            </p>
+          </div>
+
+          <Card className="p-6 shadow-card">
+            {verifyEmail ? (
+              <VerifyNotice
+                email={verifyEmail}
+                onDone={() => {
+                  setVerifyEmail(null);
+                  setTab("signin");
+                }}
               />
-            </div>
+            ) : (
+              <Tabs value={tab} onValueChange={(v) => setTab(v as "signin" | "register")}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="signin">Sign in</TabsTrigger>
+                  <TabsTrigger value="register">Create account</TabsTrigger>
+                </TabsList>
+                <TabsContent value="signin" className="mt-5">
+                  <SignInForm />
+                </TabsContent>
+                <TabsContent value="register" className="mt-5">
+                  <RegisterForm onRegistered={setVerifyEmail} />
+                </TabsContent>
+              </Tabs>
+            )}
+          </Card>
 
-            <div className="grid gap-2">
-              <Label>Sign in as</Label>
-              <RadioGroup value={role} onValueChange={(v) => setRole(v as Role)}>
-                {(["admin", "technician", "customer"] as Role[]).map((r) => (
-                  <Label
-                    key={r}
-                    htmlFor={`role-${r}`}
-                    className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 font-normal has-[[data-state=checked]]:border-accent has-[[data-state=checked]]:bg-accent/5"
-                  >
-                    <RadioGroupItem id={`role-${r}`} value={r} className="mt-0.5" />
-                    <span>
-                      <span className="block text-sm font-medium">{roleLabels[r]}</span>
-                      <span className="block text-xs text-muted-foreground">{roleHints[r]}</span>
-                    </span>
-                  </Label>
-                ))}
-              </RadioGroup>
-            </div>
-
-            <Button type="submit" className="w-full">
-              Continue
-            </Button>
-          </form>
-        </Card>
-
-        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
-          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>
-            Preview sign-in: roles control what the interface shows, but no password or server
-            check is applied yet. Connect backend authentication before relying on this to protect
-            real data.
+          <p className="text-center text-xs text-muted-foreground lg:text-left">
+            Staff (technicians and administrators) sign in here too. Their accounts are set up by
+            KBestoreTZ management. Creating an account here always gives customer access.
           </p>
         </div>
       </div>
     </PublicShell>
+  );
+}
+
+function PasswordInput({
+  id,
+  value,
+  onChange,
+  autoComplete,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  autoComplete: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        type={show ? "text" : "password"}
+        autoComplete={autoComplete}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="pr-10"
+      />
+      <button
+        type="button"
+        onClick={() => setShow((v) => !v)}
+        aria-label={show ? "Hide password" : "Show password"}
+        className="absolute top-1/2 right-2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
+
+function SignInForm() {
+  const { signInWithPassword, resendConfirmation, sendPasswordReset } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState<AuthErrorCode | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setInfo(null);
+    setFormError(null);
+    const parsed = signInSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      setErrors(collectErrors(parsed.error));
+      return;
+    }
+    setErrors({});
+    setBusy(true);
+    const result = await signInWithPassword(parsed.data.email, parsed.data.password);
+    setBusy(false);
+    if (!result.ok) setFormError(result.code);
+    // On success the session listener updates the user and the page redirects.
+  }
+
+  async function onForgot() {
+    setInfo(null);
+    const parsed = emailSchema.safeParse(email);
+    if (!parsed.success) {
+      setErrors({ email: "Enter your email above first." });
+      return;
+    }
+    setErrors({});
+    await sendPasswordReset(parsed.data);
+    // Same message whether or not the address has an account.
+    setInfo("If that email has an account, we have sent a link to reset the password.");
+  }
+
+  async function onResend() {
+    const parsed = emailSchema.safeParse(email);
+    if (!parsed.success) return;
+    const result = await resendConfirmation(parsed.data);
+    setInfo(
+      result.ok
+        ? "We have sent the confirmation email again."
+        : messageFor(result.code),
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+      <div className="grid gap-2">
+        <Label htmlFor="si-email">Email</Label>
+        <Input
+          id="si-email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <FieldError message={errors["email"]} />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="si-password">Password</Label>
+        <PasswordInput
+          id="si-password"
+          autoComplete="current-password"
+          value={password}
+          onChange={setPassword}
+        />
+        <FieldError message={errors["password"]} />
+      </div>
+
+      {formError ? (
+        <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
+          {messageFor(formError)}
+          {formError === "email_not_confirmed" ? (
+            <button type="button" onClick={onResend} className="mt-1 block font-medium underline">
+              Send the confirmation email again
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {info ? (
+        <p role="status" className="flex items-start gap-2 text-sm text-muted-foreground">
+          <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-cat-home" /> {info}
+        </p>
+      ) : null}
+
+      <Button type="submit" className="w-full" disabled={busy}>
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+        Sign in
+      </Button>
+      <button
+        type="button"
+        onClick={onForgot}
+        className="text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+      >
+        Forgot your password?
+      </button>
+    </form>
+  );
+}
+
+function RegisterForm({ onRegistered }: { onRegistered: (email: string) => void }) {
+  const { register } = useAuth();
+  const [values, setValues] = useState({
+    fullName: "",
+    phone: "",
+    email: "",
+    password: "",
+    confirm: "",
+  });
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState<AuthErrorCode | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const set = (key: keyof typeof values) => (e: { target: { value: string } }) =>
+    setValues((v) => ({ ...v, [key]: e.target.value }));
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setFormError(null);
+    const parsed = registerSchema.safeParse(values);
+    if (!parsed.success) {
+      setErrors(collectErrors(parsed.error));
+      return;
+    }
+    setErrors({});
+    setBusy(true);
+    const result = await register({
+      fullName: parsed.data.fullName,
+      phone: normalizePhone(parsed.data.phone) ?? parsed.data.phone,
+      email: parsed.data.email,
+      password: parsed.data.password,
+    });
+    setBusy(false);
+    if (result.ok) onRegistered(parsed.data.email);
+    else setFormError(result.code);
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+      <div className="grid gap-2">
+        <Label htmlFor="rg-name">Full name</Label>
+        <Input
+          id="rg-name"
+          autoComplete="name"
+          value={values.fullName}
+          onChange={set("fullName")}
+        />
+        <FieldError message={errors["fullName"]} />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="rg-phone">Mobile number</Label>
+        <Input
+          id="rg-phone"
+          type="tel"
+          autoComplete="tel"
+          placeholder="0713 134 116"
+          value={values.phone}
+          onChange={set("phone")}
+        />
+        <FieldError message={errors["phone"]} />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="rg-email">Email</Label>
+        <Input
+          id="rg-email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={values.email}
+          onChange={set("email")}
+        />
+        <FieldError message={errors["email"]} />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="rg-password">Password</Label>
+        <PasswordInput
+          id="rg-password"
+          autoComplete="new-password"
+          value={values.password}
+          onChange={(v) => setValues((cur) => ({ ...cur, password: v }))}
+        />
+        <p className="text-xs text-muted-foreground">At least 8 characters.</p>
+        <FieldError message={errors["password"]} />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="rg-confirm">Confirm password</Label>
+        <PasswordInput
+          id="rg-confirm"
+          autoComplete="new-password"
+          value={values.confirm}
+          onChange={(v) => setValues((cur) => ({ ...cur, confirm: v }))}
+        />
+        <FieldError message={errors["confirm"]} />
+      </div>
+
+      {formError ? (
+        <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
+          {messageFor(formError)}
+        </div>
+      ) : null}
+
+      <Button type="submit" className="w-full" disabled={busy}>
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+        Create account
+      </Button>
+    </form>
+  );
+}
+
+function VerifyNotice({ email, onDone }: { email: string; onDone: () => void }) {
+  const { resendConfirmation } = useAuth();
+  const [sent, setSent] = useState(false);
+
+  return (
+    <div className="grid gap-4 text-center">
+      <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-cat-home/10 text-cat-home">
+        <MailCheck className="h-5 w-5" />
+      </span>
+      <h2 className="font-display text-lg font-bold">Check your email</h2>
+      <p className="text-sm text-muted-foreground">
+        If <span className="font-medium text-foreground">{email}</span> can be registered, we have
+        sent a confirmation link to it. Open the link, then come back here to sign in. Check your
+        spam folder if you do not see it.
+      </p>
+      <Button
+        variant="outline"
+        disabled={sent}
+        onClick={async () => {
+          await resendConfirmation(email);
+          setSent(true);
+        }}
+      >
+        {sent ? "Email sent again" : "Send it again"}
+      </Button>
+      <Button variant="ghost" onClick={onDone}>
+        Back to sign in
+      </Button>
+    </div>
   );
 }
