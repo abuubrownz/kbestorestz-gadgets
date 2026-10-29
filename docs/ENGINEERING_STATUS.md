@@ -86,7 +86,7 @@ Applying a migration is a **CTO decision**. Never apply one automatically.
 | Ref | Commit | Relationship | Disposition |
 | --- | --- | --- | --- |
 | `origin/main` | `3a349b9` | Canonical base | Target for all merges |
-| `feat/real-auth` (HEAD) | `a76823a` | Pushed. Contains the auth/phone-MFA work (`ae6dbde`), this alignment commit, and a parallel CI commit (`49b1543`); contains `origin/main` | Review and merge to `main` via PR |
+| `feat/real-auth` (HEAD) | pushed | Contains the auth/phone-MFA work (`ae6dbde`), the alignment commits, and a parallel CI commit (`49b1543`); contains `origin/main` | Review and merge to `main` via PR |
 | `origin/feat/catalogue-db` | `74ff825` | Sibling of HEAD (branches at `aacf7aa`); SQL + docs only | Rebase after auth merges, then PR |
 | `origin/feat/contact-details` | `86d0f8d` | Independent branch from `origin/main`; contact details/locations | Merge independently |
 | local `main` | `216314b` | **Diverged** from `origin/main` (ahead 1, behind 2) | Do not merge into `origin/main`; reset local `main` to `origin/main`, keep `216314b` on `feat/my-changes` |
