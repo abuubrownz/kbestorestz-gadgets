@@ -3,7 +3,7 @@
 > Single source of truth for the CTO and every coding agent working on this repository.
 > Update the **Now / Next / Blocked** section at the end of each working session.
 >
-> Last verified: **2026-10-29** · branch `feat/real-auth` @ `b101237` · verified by an AI coding agent.
+> Last verified: **2026-10-29** · branch `feat/real-auth` (pushed) · verified by an AI coding agent.
 
 ---
 
@@ -86,8 +86,7 @@ Applying a migration is a **CTO decision**. Never apply one automatically.
 | Ref | Commit | Relationship | Disposition |
 | --- | --- | --- | --- |
 | `origin/main` | `3a349b9` | Canonical base | Target for all merges |
-| `feat/real-auth` (HEAD) | `b101237` | **+1 unpushed commit** on top of `origin/feat/real-auth`; contains `origin/main` | Push, review, merge to `main` |
-| `origin/feat/real-auth` | `aacf7aa` | Auth work before phone MFA | Superseded by HEAD |
+| `feat/real-auth` (HEAD) | `a76823a` | Pushed. Contains the auth/phone-MFA work (`ae6dbde`), this alignment commit, and a parallel CI commit (`49b1543`); contains `origin/main` | Review and merge to `main` via PR |
 | `origin/feat/catalogue-db` | `74ff825` | Sibling of HEAD (branches at `aacf7aa`); SQL + docs only | Rebase after auth merges, then PR |
 | `origin/feat/contact-details` | `86d0f8d` | Independent branch from `origin/main`; contact details/locations | Merge independently |
 | local `main` | `216314b` | **Diverged** from `origin/main` (ahead 1, behind 2) | Do not merge into `origin/main`; reset local `main` to `origin/main`, keep `216314b` on `feat/my-changes` |
@@ -97,8 +96,8 @@ Applying a migration is a **CTO decision**. Never apply one automatically.
 | `origin/feat/storefront-redesign` | `196610f` | Already merged into `origin/main` | Done |
 | `refs/agents/...` | various | Automatic agent checkpoints (snapshots) | **Never merge, push or deploy** |
 
-**Highest-risk fact:** `b101237` (the phone-MFA work) exists only on this machine. If the laptop is
-lost or another agent is used, that work disappears. Push it before starting anything else.
+**Resolved risk:** the phone-MFA work (`ae6dbde`, originally `b101237`) previously existed only on
+the CTO's machine. It was pushed on 2026-10-29 together with this alignment commit.
 
 ## 6. Working agreement for the CTO and all coding agents
 
@@ -117,7 +116,8 @@ system instead of four competing ones.
 6. `main` must always build. CI `build` is blocking.
 7. Never rewrite published history (no force-push, rebase, amend or squash of pushed commits).
    Lovable mirrors this repository; rewriting loses project history.
-8. Never merge `refs/agents/...` checkpoint refs.
+8. Never merge `refs/agents/...` checkpoint refs. Before pushing, fetch; if the remote moved, rebase
+   only your **unpushed** commits and retry — never force-push.
 
 **Safety boundaries (require explicit CTO approval)**
 9. Applying database migrations, changing RLS policies, or deleting business data.
@@ -144,6 +144,8 @@ system instead of four competing ones.
 - Added `endOfLine: "auto"` to `.prettierrc` so Windows (CRLF) and Linux (LF) agents agree.
 - Added `.gitattributes` to normalise the repository to LF and mark binary assets.
 - Added this document and expanded `AGENTS.md` with the working agreement.
+- Integrated a remote CI commit (`49b1543`) authored by a parallel Claude session. The two local
+  commits were rebased on top of it and pushed without force (`49b1543..a76823a`).
 - Made CI `typecheck` blocking (it now passes); `lint` stays report-only until the format sweep.
 
 ## 8. Rational delivery sequence
@@ -177,7 +179,7 @@ system instead of four competing ones.
 
 ## 9. Decisions needed from the CTO
 
-1. Approve pushing `feat/real-auth` and opening the PR today (protects the only copy of the MFA work).
+1. ~~Push `feat/real-auth`~~ — done 2026-10-29. Remaining: approve opening the PR to `main`.
 2. Approve resetting the **local** `main` to `origin/main` (keeps `216314b` on `feat/my-changes`).
 3. Approve the one-time repo-wide Prettier sweep once the merge queue is clear.
 4. Catalogue policy: should technicians change prices, or only stock and photos?
@@ -187,7 +189,7 @@ system instead of four competing ones.
 
 ## Now / Next / Blocked
 
-- **Now:** Phase 1 consolidation; auth branch ready to push and review.
+- **Now:** Phase 1 consolidation; `feat/real-auth` is pushed and ready for PR review.
 - **Next:** merge contact details, rebase catalogue, then choose Phase 2 or Phase 3.
 - **Blocked:** live ordering/booking (needs schema + CTO approval); real SMS (needs Africa's
   Talking credentials and sender ID); production email (needs SMTP provider).
