@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { products, type Product } from "./data";
+import { type Product } from "./data";
+import { useCatalogue } from "./catalogue";
 
 export type CartLine = { id: string; qty: number };
 
@@ -20,6 +21,7 @@ const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "kbestoretz.cart";
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const { products } = useCatalogue();
   const [lines, setLines] = useState<CartLine[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
@@ -79,7 +81,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       remove,
       clear,
     };
-  }, [lines, add, setQty, remove, clear]);
+  }, [lines, products, add, setQty, remove, clear]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

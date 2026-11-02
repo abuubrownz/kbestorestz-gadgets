@@ -9,6 +9,7 @@ import {
   PackageX,
   CheckCircle2,
   Plus,
+  Minus,
   Trash2,
 } from "lucide-react";
 import { DashboardShell } from "@/components/kb/dashboard-shell";
@@ -37,7 +38,15 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
-import { repairs as seedRepairs, repairStages, formatTZS, type Repair, type RepairStage } from "@/lib/data";
+import { useCatalogue } from "@/lib/catalogue";
+import {
+  repairs as seedRepairs,
+  repairStages,
+  formatTZS,
+  type Product,
+  type Repair,
+  type RepairStage,
+} from "@/lib/data";
 
 export const Route = createFileRoute("/technician")({
   staticData: { sitemap: false },
@@ -71,6 +80,7 @@ const warrantyOptions = ["30 days", "60 days", "90 days", "6 months"];
 
 function TechnicianPage() {
   const { hasRole } = useAuth();
+  const { products, setStock } = useCatalogue();
   const visibleNav = nav.filter((item) => item.to !== "/admin" || hasRole("admin"));
   const [repairsList, setRepairsList] = useState<Repair[]>(seedRepairs);
   const [selectedTicket, setSelectedTicket] = useState(seedRepairs[0]?.ticket ?? "");
@@ -80,6 +90,8 @@ function TechnicianPage() {
   const [workPerformed, setWorkPerformed] = useState("");
   const [tested, setTested] = useState({ functional: false, cosmetic: false, calibration: false });
   const [warranty, setWarranty] = useState("90 days");
+  const [stockQuery, setStockQuery] = useState("");
+  const [showAllStock, setShowAllStock] = useState(false);
 
   const selected = repairsList.find((r) => r.ticket === selectedTicket) ?? repairsList[0];
 
@@ -104,6 +116,30 @@ function TechnicianPage() {
       },
     ];
   }, [repairsList]);
+
+  // Lowest stock first so urgent parts surface without scrolling.
+  const stockMatches = useMemo(() => {
+    const query = stockQuery.trim().toLowerCase();
+    return products
+      .filter(
+        (product) =>
+          !query ||
+          product.name.toLowerCase().includes(query) ||
+          product.brand.toLowerCase().includes(query),
+      )
+      .sort((a, b) => a.stock - b.stock || a.name.localeCompare(b.name));
+  }, [products, stockQuery]);
+
+  const collapsed = !showAllStock && stockQuery.trim() === "" && stockMatches.length > 6;
+  const stockItems = collapsed ? stockMatches.slice(0, 6) : stockMatches;
+
+  function changeStock(product: Product, delta: number) {
+    const next = Math.max(0, product.stock + delta);
+    setStock(product.id, next);
+    toast(`${product.name} stock updated`, {
+      description: `${next} units available · synced with admin and the storefront.`,
+    });
+  }
 
   function updateSelected(patch: Partial<Repair>) {
     if (!selected) return;
@@ -170,6 +206,98 @@ function TechnicianPage() {
           </Card>
         ))}
       </div>
+
+      <Card className="mt-6 p-5 shadow-card">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="eyebrow text-muted-foreground">Inventory</p>
+            <h2 className="mt-1 font-display text-lg font-semibold">Parts &amp; product stock</h2>
+            <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+              Receive or deduct stock as you work on repairs. Admin and the storefront see the same
+              live quantities.
+            </p>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={stockQuery}
+              onChange={(e) => setStockQuery(e.target.value)}
+              placeholder="Search parts or devices…"
+              className="pl-9"
+              aria-label="Search stock"
+            />
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {stockItems.map((product) => {
+            const low = product.stock <= 5;
+            return (
+              <div
+                key={product.id}
+                className={cn(
+                  "rounded-xl border p-3",
+                  low && "border-warning/50 bg-warning/5",
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm leading-snug font-medium">{product.name}</p>
+                  <StatusBadge
+                    label={product.stock === 0 ? "Out" : low ? "Low" : "In stock"}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground capitalize">
+                  {product.brand} · {product.category.replace("-", " ")}
+                </p>
+                <div className="mt-3 flex items-center justify-between">
+                  <span
+                    className={cn(
+                      "text-sm font-semibold",
+                      low ? "text-warning-foreground" : "text-foreground",
+                    )}
+                  >
+                    {product.stock} units
+                  </span>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-7 w-7"
+                      aria-label={`Remove one ${product.name}`}
+                      disabled={product.stock === 0}
+                      onClick={() => changeStock(product, -1)}
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-7 w-7"
+                      aria-label={`Add one ${product.name}`}
+                      onClick={() => changeStock(product, 1)}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {stockMatches.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No products match “{stockQuery}”.</p>
+          ) : null}
+        </div>
+        {!stockQuery.trim() && stockMatches.length > 6 ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-3"
+            onClick={() => setShowAllStock((value) => !value)}
+            aria-expanded={!collapsed}
+          >
+            {collapsed ? `Show all ${stockMatches.length} products` : "Show lowest stock only"}
+          </Button>
+        ) : null}
+      </Card>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[320px_1fr]">
         <Card className={cn("shadow-card lg:sticky lg:top-20 lg:h-fit", selected ? "hidden lg:block" : "")}>

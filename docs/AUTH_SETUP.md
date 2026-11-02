@@ -75,6 +75,58 @@ There is no self-service phone replacement or recovery flow in this milestone. D
 account-recovery procedure before production so customers who lose access to their verified phone
 are not permanently locked out.
 
+### When the sign-up SMS is actually sent
+
+The sign-up form collects the phone number and stores it on the account, but **Supabase cannot send
+a phone OTP for an email + password sign-up before the email is confirmed.** The confirmation link
+creates the first session, and that is what allows the app to enrol the phone factor and request the
+code. So the real sequence is:
+
+1. Customer registers with name, phone, email and password.
+2. Supabase emails a confirmation link.
+3. The customer opens the link. The app receives a signed-in session, enrols the phone number from
+   step 1, and the SMS hook sends the six-digit code.
+4. The customer enters the code and only then reaches the account.
+
+If the email link is never opened, no SMS is sent. If the project ever switches **Confirm email**
+off, the code is sent immediately after registration instead — do not make that change without CTO
+approval, because it weakens the account-recovery guarantee.
+
+**Forgot password** is email-only in Supabase. The sign-in and registration panels now open a
+dedicated reset view that sends a one-time email link to `/reset-password`; it never claims to send
+an SMS reset. Customers without access to the registered email are pointed at support for manual
+verification.
+
+### Free ways to test the OTP before paying for SMS
+
+- **Supabase test phone numbers** (Authentication → Phone provider → test numbers): add a number and
+  a fixed code. Supabase accepts that code without calling the SMS hook, so end-to-end testing costs
+  nothing. Never use these numbers for real customers.
+- **Africa's Talking sandbox**: free sandbox messages to numbers you have verified in the sandbox;
+  useful for checking the hook adapter itself.
+- Production SMS is not free. Budget for one message per new account and one per sign-in.
+
+### Choosing a bulk SMS provider for Tanzania
+
+Prices below are published list prices found on the providers' public coverage pages; confirm the
+current quote and sender-ID approval before budgeting.
+
+| Provider | Tanzania outbound SMS | Notes |
+| --- | --- | --- |
+| **Beem Africa** | **TZS 20** (1–10,000), TZS 18 (10k–25k), TZS 17 (25k–50k), TZS 16 (50k–100k), TZS 14 (100k–250k), TZS 13 (250k–500k), TZS 12 (500k–1M) | Tanzania-based; sender ID registration required. Cheapest published local rate found. |
+| **Africa's Talking** | Confirm current Tanzania quote | Already wired into `send-sms-hook`; free sandbox for testing. Keep as the low-effort path. |
+| **Twilio** | **USD 0.4336** per segment (Oct 2026) | About 50–60× the Beem rate; only sensible if global coverage matters more than cost. |
+
+**Recommendation:** use **Beem Africa for production volume** and keep the existing Africa's Talking
+adapter as the fallback/testing route. Switching providers is a small change to
+`supabase/functions/send-sms-hook/index.ts` (add a `SMS_PROVIDER` branch, keep the same signed-webhook
+validation and `+255[67]` guard), followed by new Edge Function secrets and a sender-ID approval.
+That is an infrastructure change: get CTO approval, then test with one number before enabling it for
+customers. For a zero-cost pilot, use Supabase test phone numbers and the Africa's Talking sandbox.
+WhatsApp authentication templates are a possible cheaper fallback later (Beem lists about
+USD 0.01 per authentication message for the rest of Africa), but they need a WhatsApp Business
+account and approved templates.
+
 ## 4. Make yourself the first administrator
 
 1. Go to the website, open **Sign in**, then **Create account**, and register with your own email.
@@ -108,11 +160,15 @@ with `'technician'` and their email. Nobody can give themselves staff access fro
 
 ## Testing checklist
 
-- Register a new account: you should see "Check your email" and **cannot** sign in until you click
-  the link.
-- After confirming, sign in: you land on **My account**, and `/admin` shows "You don't have access".
-- At first sign-in, verify the SMS code to enroll the phone. Sign out and sign in again to confirm
-  another code is required before the account loads.
-- With only an AAL1 session, direct reads/writes of `user_roles` must be denied by RLS.
-- "Forgot your password?" sends a link that opens **Choose a new password**.
+- Register a new account: you should see "Check your email" with a three-step notice that shows
+  the phone number masked, and **cannot** reach the account until you click the link.
+- Open the confirmation link: you land on **Verify your phone number** and the SMS hook requests a
+  code for the number entered at sign-up. If it does not arrive, **Send a new code** is disabled for
+  45 seconds and then works.
+- After entering the code you land on **My account**; `/admin` shows "You don't have access".
+- Sign out and sign in again: another SMS code is required before the account loads.
+- **Forgot your password?** opens the reset view from both the sign-in and registration panels. A
+  valid email sends a link that opens **Choose a new password**; the same neutral confirmation shows
+  for an address with no account.
 - A wrong password shows one neutral message.
+- With only an AAL1 session, direct reads/writes of `user_roles` must be denied by RLS.

@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { useCart } from "@/lib/cart";
-import { formatTZS, productById, products, reviews } from "@/lib/data";
+import { useCatalogue } from "@/lib/catalogue";
+import { formatTZS, productById, reviews } from "@/lib/data";
 
 export const Route = createFileRoute("/products/$productId")({
   staticData: { sitemap: true },
@@ -35,7 +36,8 @@ export const Route = createFileRoute("/products/$productId")({
 
 function ProductDetailPage() {
   const { productId } = Route.useParams();
-  const product = productById(productId);
+  const { products, getById } = useCatalogue();
+  const product = getById(productId);
   const navigate = useNavigate();
   const { add } = useCart();
   const [qty, setQty] = useState(1);
@@ -46,7 +48,7 @@ function ProductDetailPage() {
     const sameCategory = products.filter((p) => p.category === product.category && p.id !== product.id);
     const pool = sameCategory.length > 0 ? sameCategory : products.filter((p) => p.id !== product.id);
     return pool.slice(0, 4);
-  }, [product]);
+  }, [product, products]);
 
   if (!product) {
     return (
@@ -152,6 +154,7 @@ function ProductDetailPage() {
                   variant="ghost"
                   size="icon"
                   aria-label="Increase quantity"
+                  disabled={product.stock === 0 || qty >= product.stock}
                   onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
                 >
                   <Plus className="h-4 w-4" />
@@ -162,6 +165,7 @@ function ProductDetailPage() {
                 size="lg"
                 variant="outline"
                 className="flex-1 sm:flex-none"
+                disabled={product.stock === 0}
                 onClick={() => {
                   add(product.id, qty);
                   toast.success("Added to cart", { description: `${qty} × ${product.name}` });
@@ -172,6 +176,7 @@ function ProductDetailPage() {
               <Button
                 size="lg"
                 className="flex-1 sm:flex-none"
+                disabled={product.stock === 0}
                 onClick={() => {
                   add(product.id, qty);
                   navigate({ to: "/checkout" });

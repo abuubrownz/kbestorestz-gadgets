@@ -1,8 +1,10 @@
-import { Link } from "@tanstack/react-router";
-import { Star, Plus } from "lucide-react";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { Heart, Star, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
+import { useWishlist } from "@/lib/wishlist";
 import { formatTZS, type Product } from "@/lib/data";
 import { themeFor } from "@/lib/storefront-theme";
 import { cn } from "@/lib/utils";
@@ -12,12 +14,34 @@ const LOW_STOCK_AT = 5;
 
 export function ProductCard({ product, className }: { product: Product; className?: string }) {
   const { add } = useCart();
+  const { user } = useAuth();
+  const { has, toggle } = useWishlist();
+  const navigate = useNavigate();
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const saved = has(product.id);
   const theme = themeFor(product.category);
   const onSale = typeof product.compareAt === "number" && product.compareAt > product.price;
   const savePct = onSale
     ? Math.round((1 - product.price / (product.compareAt as number)) * 100)
     : 0;
   const lowStock = product.stock <= LOW_STOCK_AT;
+
+  function onToggleSave() {
+    if (!user) {
+      toast("Sign in to save favourites", {
+        description: "A free account keeps your wishlist, orders and repair history together.",
+        action: {
+          label: "Sign in",
+          onClick: () => void navigate({ to: "/login", search: { redirect: pathname } }),
+        },
+      });
+      return;
+    }
+    const nowSaved = toggle(product.id);
+    toast.success(nowSaved ? "Saved to your wishlist" : "Removed from your wishlist", {
+      description: product.name,
+    });
+  }
 
   return (
     <div
@@ -28,6 +52,18 @@ export function ProductCard({ product, className }: { product: Product; classNam
       )}
     >
       <span aria-hidden className={cn("absolute inset-x-0 top-0 z-10 h-1", theme.bar)} />
+      <button
+        type="button"
+        onClick={onToggleSave}
+        aria-pressed={saved}
+        aria-label={saved ? `Remove ${product.name} from wishlist` : `Save ${product.name} to wishlist`}
+        className={cn(
+          "absolute top-3 left-3 z-20 grid h-8 w-8 place-items-center rounded-full border bg-background/90 shadow-sm backdrop-blur transition-colors hover:bg-background",
+          saved ? "text-destructive" : "text-muted-foreground hover:text-foreground",
+        )}
+      >
+        <Heart className={cn("h-4 w-4", saved && "fill-destructive")} />
+      </button>
       <Link
         to="/products/$productId"
         params={{ productId: product.id }}

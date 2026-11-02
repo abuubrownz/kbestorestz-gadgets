@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   BadgeCheck,
+  Heart,
   LayoutDashboard,
   LogIn,
   LogOut,
@@ -15,8 +16,10 @@ import {
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
+import brandMark from "@/assets/brand/kbestoretz-mark.png";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useCart } from "@/lib/cart";
+import { useWishlist } from "@/lib/wishlist";
 import { roleHome, roleLabels, useAuth } from "@/lib/auth";
 import { categories } from "@/lib/data";
 import { familyTheme, themeFor } from "@/lib/storefront-theme";
@@ -98,6 +101,7 @@ function SearchBox({
 
 export function SiteHeader() {
   const { count } = useCart();
+  const { count: wishCount } = useWishlist();
   const { user, signOut, hasRole } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -124,9 +128,9 @@ export function SiteHeader() {
       <header className="sticky top-0 z-50 border-b border-border/70 bg-background/90 backdrop-blur-xl">
         <div className="rainbow-rule h-0.5 w-full" aria-hidden />
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:gap-4 sm:px-6">
-          <Link to="/" className="flex shrink-0 items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-lg ink-panel font-display text-sm font-bold">
-              KB
+          <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="KBestoreTZ home">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl ink-panel p-1 shadow-card ring-1 ring-white/10">
+              <img src={brandMark} alt="" className="h-full w-full object-contain" />
             </span>
             <span className="font-display text-base font-bold tracking-tight">
               KBestore<span className="text-accent">TZ</span>
@@ -173,6 +177,23 @@ export function SiteHeader() {
                 <User className="h-4 w-4" />
               </Button>
             </Link>
+            {user ? (
+              <Link
+                to="/account"
+                search={{ tab: "saved" }}
+                aria-label={`Wishlist (${wishCount} saved)`}
+                className="relative hidden sm:block"
+              >
+                <Button variant="ghost" size="icon">
+                  <Heart className="h-4 w-4" />
+                </Button>
+                {wishCount > 0 ? (
+                  <span className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[10px] font-semibold text-accent-foreground">
+                    {wishCount}
+                  </span>
+                ) : null}
+              </Link>
+            ) : null}
             <Link to="/cart" aria-label="Open cart" className="relative">
               <Button variant="outline" size="icon">
                 <ShoppingCart className="h-4 w-4" />

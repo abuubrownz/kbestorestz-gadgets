@@ -17,7 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { brands, categories, products } from "@/lib/data";
+import { categories, type Product } from "@/lib/data";
+import { useCatalogue } from "@/lib/catalogue";
 
 export const Route = createFileRoute("/products/")({
   staticData: { sitemap: true },
@@ -52,17 +53,26 @@ const SORTS = [
   { value: "rating", label: "Highest rated" },
 ] as const;
 
-const MAX_PRICE = Math.max(...products.map((p) => p.price));
+const MAX_PRICE_FALLBACK = 5000000;
 
-function useFilters() {
+function useFilters(products: Product[]) {
   const initial = Route.useSearch();
+  const maxPrice = useMemo(
+    () => (products.length > 0 ? Math.max(...products.map((p) => p.price)) : MAX_PRICE_FALLBACK),
+    [products],
+  );
   const [search, setSearch] = useState(initial.q ?? "");
   const [category, setCategory] = useState<string>(
     categories.some((c) => c.slug === initial.category) ? (initial.category as string) : "all",
   );
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, MAX_PRICE]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, maxPrice]);
   const [sort, setSort] = useState<(typeof SORTS)[number]["value"]>("featured");
+
+  // Keep the price ceiling in step when the shared catalogue changes.
+  useEffect(() => {
+    setPriceRange(([, high]) => [0, Math.max(high, maxPrice)]);
+  }, [maxPrice]);
 
   // Follow the address when it changes while the page is already open (e.g. a new header search).
   useEffect(() => {
@@ -82,7 +92,7 @@ function useFilters() {
     setSearch("");
     setCategory("all");
     setSelectedBrands([]);
-    setPriceRange([0, MAX_PRICE]);
+    setPriceRange([0, maxPrice]);
     setSort("featured");
   };
 
@@ -101,7 +111,7 @@ function useFilters() {
       return 0;
     });
     return list;
-  }, [search, category, selectedBrands, priceRange, sort]);
+  }, [products, search, category, selectedBrands, priceRange, sort]);
 
   return {
     search,
@@ -112,6 +122,7 @@ function useFilters() {
     toggleBrand,
     priceRange,
     setPriceRange,
+    maxPrice,
     sort,
     setSort,
     reset,
@@ -119,7 +130,7 @@ function useFilters() {
   };
 }
 
-function FilterPanel({ f }: { f: ReturnType<typeof useFilters> }) {
+function FilterPanel({ f, brands }: { f: ReturnType<typeof useFilters>; brands: string[] }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -169,7 +180,7 @@ function FilterPanel({ f }: { f: ReturnType<typeof useFilters> }) {
         <p className="mb-3 text-sm font-semibold">Price range</p>
         <Slider
           min={0}
-          max={MAX_PRICE}
+          max={f.maxPrice}
           step={50000}
           value={f.priceRange}
           onValueChange={(v) => f.setPriceRange(v as [number, number])}
@@ -187,7 +198,12 @@ function FilterPanel({ f }: { f: ReturnType<typeof useFilters> }) {
 }
 
 function ProductsPage() {
-  const f = useFilters();
+  const { products } = useCatalogue();
+  const f = useFilters(products);
+  const brandOptions = useMemo(
+    () => Array.from(new Set(products.map((p) => p.brand))).sort((a, b) => a.localeCompare(b)),
+    [products],
+  );
 
   return (
     <PublicShell>
@@ -206,7 +222,7 @@ function ProductsPage() {
         <div className="flex flex-col gap-8 lg:flex-row">
           <aside className="hidden w-64 shrink-0 lg:block">
             <div className="sticky top-24 rounded-2xl border bg-card p-5 shadow-card">
-              <FilterPanel f={f} />
+              <FilterPanel f={f} brands={brandOptions} />
             </div>
           </aside>
 
@@ -232,7 +248,7 @@ function ProductsPage() {
                   <SheetContent side="left" className="w-80 overflow-y-auto">
                     <SheetTitle className="font-display">Filters</SheetTitle>
                     <div className="mt-6">
-                      <FilterPanel f={f} />
+                      <FilterPanel f={f} brands={brandOptions} />
                     </div>
                   </SheetContent>
                 </Sheet>

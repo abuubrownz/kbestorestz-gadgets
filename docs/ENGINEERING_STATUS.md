@@ -3,7 +3,7 @@
 > Single source of truth for the CTO and every coding agent working on this repository.
 > Update the **Now / Next / Blocked** section at the end of each working session.
 >
-> Last verified: **2026-10-29** · branch `feat/real-auth` (pushed) · verified by an AI coding agent.
+> Last verified: **2026-11-02** · branch `feat/real-auth` (uncommitted changes, awaiting CTO preview) · verified by an AI coding agent.
 
 ---
 
@@ -185,11 +185,131 @@ system instead of four competing ones.
 4. Catalogue policy: should technicians change prices, or only stock and photos?
 5. Next workstream after Phase 1: **catalogue persistence** or **orders/checkout**?
 
+## 10. Session log �?" 2026-10-30: live category cards, shared catalogue, logo
+
+**Shipped on `feat/real-auth` (uncommitted at time of writing):**
+
+- Added `src/lib/catalogue.tsx`: one shared catalogue provider (seed = `src/lib/data.ts`, persisted
+  to `localStorage` under `kbestoretz.catalogue.v1`). Admin edits, technician stock changes, the
+  homepage, `/products`, product detail and the cart all read the same list. This is the seam where
+  the Supabase catalogue migration plugs in later — no UI changes needed.
+- Homepage category cards now show real products (top two by reviews, live price and starting price)
+  and derive their counts from the catalogue instead of the hard-coded `cat.items` values.
+- `/admin/products` now writes to the shared catalogue and has inline stock +/- controls. Edits are
+  visible on the storefront immediately.
+- Technician workspace gained a **Parts & product stock** panel: search, low-stock highlighting and
+  +/- stock adjustments, sorted lowest-first with a “Show all N products” toggle. Technicians do
+  **not** edit prices; that stays admin-only.
+- `/products` filters (brand list, price ceiling) and `/products/$productId` now come from the shared
+  catalogue. Out-of-stock products can no longer be added to the cart.
+- Replaced the placeholder `KB` tile with the supplied logo: cropped and keyed to transparency into
+  `src/assets/brand/kbestoretz-mark.png` (header/footer) and `src/assets/brand/kbestoretz-logo.png`
+  (login panel). The mark sits in the existing dark `ink-panel` tile so white artwork stays legible.
+
+**Verified:** `bun x tsc --noEmit` passes; `bun run build` passes (client + SSR + Nitro).
+
+**Not verified / still sample data:** catalogue edits persist per browser via localStorage, not in
+Supabase. Clearing storage restores the seed catalogue. Multi-device sync and image upload still
+need the catalogue migration (CTO approval) and a real photo bucket.
+
+### 2026-11-02: welcome screen, auth panels, link rationalisation
+
+- Added `src/components/kb/welcome-dialog.tsx` and mounted it in `PublicShell`: a first-visit
+  welcome dialog with the brand lockup and the essentials (genuine devices + warranties, tracked
+  certified repairs, delivery/locations), plus CTAs to `/products`, `/repairs/book` and
+  `/repairs/track`. Seen state is stored under `kbestoretz.welcome.v1`; the footer
+  **About KBestoreTZ** button re-opens it via a DOM event.
+- `/login` left panel is now tab-aware: **Sign in** explains what returning customers can see and do
+  (orders, warranties, live repair stages, email/SMS alerts, phone-code security) and links to
+  guest repair tracking; **Create account** explains what sign-up involves (email + phone
+  verification, ~1 minute, no card details) and links to guest booking.
+- Link rationalisation: footer social placeholders (`href="#"`) replaced with working WhatsApp,
+  `mailto:` and Google Maps links; locations now open Google Maps; the plain-text support email is a
+  `mailto:` link; contact constants centralised in `src/lib/contact.ts`.
+- Homepage hero gained utility links to repair tracking, account orders/warranties and WhatsApp.
+  Removed the unverifiable “Join 9,000+ subscribers” newsletter claim.
+
+**Verified:** `bun x tsc --noEmit` passes; `bun run build` passes; dev server returns 200 on `/`,
+`/products`, `/products/iphone-15-pro`, `/login`, and SSR output contains the new links.
+
+**Not verified:** the welcome dialog itself is client-only (opens from `useEffect`), so it could not
+be screenshot-verified without the in-app browser. Please confirm it appears on a fresh browser
+profile and stays dismissed afterwards.
+
+### 2026-11-02: member access — wishlist + account-gated checkout
+
+**Access model now:** guests can browse the catalogue, compare products, use the cart and book/track
+repairs. Checkout, order history, warranties and the wishlist require an account.
+
+- New `src/lib/wishlist.tsx`: `WishlistProvider` stores saved product ids per signed-in user
+  (`kbestoretz.wishlist.<userId>`), clears on sign-out, and exposes `has/toggle/remove/clear`.
+  Mounted in `__root.tsx` inside `AuthProvider`.
+- `ProductCard` gained a heart button. Guests get a toast with a **Sign in** action that returns them
+  to the page they were on after login; signed-in users save/unsave instantly.
+- Header shows a wishlist icon with a live count for signed-in users and deep-links to
+  `/account?tab=saved`.
+- `/account` now has a **Saved** tab and a live “Saved products” overview card (empty state links to
+  the store). `/account` accepts `?tab=` so links can open a specific tab.
+- `/checkout` is wrapped in `RequireRole`: guests get the sign-in prompt with `redirect=/checkout`
+  (cart survives because it is stored locally), and the contact step is pre-filled from the account
+  name/email.
+- Account banner now states clearly which data is sample (orders/repairs/points) and that the
+  wishlist is real.
+
+**Verified:** `bun x tsc --noEmit` passes; `bun run build` passes; SSR renders the heart control on
+product cards and the sign-in gate on `/checkout`.
+
+**Next in scope (unblocked):** move repair bookings into a shared store so a signed-in booking
+appears under account → Repairs. **Blocked on CTO approval:** persisting catalogue, orders and
+wishlists in Supabase (migrations).
+
+---
+
+### 2026-11-02: forgot-password view + sign-up phone OTP clarity + SMS provider choice
+
+- `/login` now has a dedicated **Reset your password** view, reachable from both the sign-in form and
+  the registration form. It sends the Supabase one-time email link to `/reset-password`, shows the
+  same neutral confirmation whether or not the address exists, rate-limits resends (60s), and offers
+  a WhatsApp support route for customers who no longer use the registered email. The left-hand panel
+  switches to account-recovery copy while the form is open.
+- Registration now keeps the normalised phone number through the “Check your email” step and shows
+  it masked (`+255 713 ••• 116`) in a three-step notice. The phone field explains that the SMS code
+  is sent when the email is confirmed.
+- Phone MFA screen now names the number, states that it is the number from sign-up, explains the
+  one-time-code field, and disables **Send a new code** for 45 seconds after a successful resend to
+  stay inside Supabase Auth rate limits. A support link covers a wrong number.
+- **Why the OTP is not sent on submit:** Supabase email+password sign-up returns no session until
+  the confirmation link is opened. The confirmation link creates the session, the app enrols the
+  phone factor and the SMS hook sends the code. This is documented in `docs/AUTH_SETUP.md`; do not
+  disable email confirmation just to move the SMS earlier without CTO sign-off.
+- **Forgot password stays email-only** because Supabase password recovery does not support phone OTP
+  without adding a phone identity (a new auth method). The UI does not imply an SMS reset exists.
+
+**SMS provider recommendation (Tanzania):** Beem Africa is the cheapest published local option found
+— **TZS 20** per SMS for 1–10,000, falling to TZS 12 at 500k–1M, with sender-ID registration. Twilio
+quotes **USD 0.4336** per segment for Tanzania (Oct 2026), roughly 50–60× more. Africa's Talking is
+already wired into `supabase/functions/send-sms-hook`; keep it for the pilot (free sandbox) and add a
+Beem branch when production volume justifies sender-ID approval. For zero-cost testing use Supabase
+test phone numbers with fixed OTPs. Full comparison is in `docs/AUTH_SETUP.md` §3.
+
+**Verified:** `bun x tsc --noEmit` passes; `/login` returns 200 with the new reset entry point;
+`bun run build` is re-run before hand-off.
+
+**Next in scope (unblocked):** repair bookings in a shared store so a signed-in booking appears under
+account → Repairs. **Blocked on CTO approval:** SMS provider/sender-ID switch and production
+credentials; persisted catalogue/orders/wishlists (migrations).
+
 ---
 
 ## Now / Next / Blocked
 
-- **Now:** Phase 1 consolidation; `feat/real-auth` is pushed and ready for PR review.
-- **Next:** merge contact details, rebase catalogue, then choose Phase 2 or Phase 3.
-- **Blocked:** live ordering/booking (needs schema + CTO approval); real SMS (needs Africa's
-  Talking credentials and sender ID); production email (needs SMTP provider).
+- **Now:** homepage cards, shared catalogue, logo, welcome dialog, tab-aware auth panels, link fixes,
+  member access (per-account wishlist, account-gated checkout with pre-filled contact details, Saved
+  tab) and the forgot-password/sign-up OTP refinements are implemented for review on
+  `feat/real-auth`. Commit/push awaits CTO approval after preview.
+- **Next:** move repair bookings into a shared store so a signed-in booking appears under
+  account → Repairs; then apply the catalogue migration and swap the localStorage providers for
+  Supabase reads/writes.
+- **Blocked:** live ordering/booking persistence (needs schema + CTO approval); production SMS
+  delivery (needs an approved provider, sender ID and Edge Function secrets — Beem Africa recommended
+  for cost, Africa's Talking adapter already present); production email (needs SMTP provider).

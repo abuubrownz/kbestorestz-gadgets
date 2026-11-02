@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Check, CheckCircle2, CreditCard, Smartphone, Wallet, Banknote } from "lucide-react";
 import { PublicShell } from "@/components/kb/public-shell";
+import { RequireRole } from "@/components/kb/require-role";
 import { DemoConfirmNotice } from "@/components/kb/demo-notice";
 import { DeviceVisual } from "@/components/kb/device-visual";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { formatTZS } from "@/lib/data";
 
@@ -45,11 +47,26 @@ function generateOrderNumber() {
 }
 
 function CheckoutPage() {
+  // Orders belong to an account: guests can browse and fill a cart, but checkout
+  // hands them to sign-in and returns them here afterwards.
+  return (
+    <RequireRole allow={["customer", "technician", "admin"]}>
+      <CheckoutContent />
+    </RequireRole>
+  );
+}
+
+function CheckoutContent() {
+  const { user } = useAuth();
   const { detailed, subtotal, delivery, total, clear } = useCart();
   const navigate = useNavigate();
 
   const [step, setStep] = useState(0);
-  const [customer, setCustomer] = useState({ name: "", email: "", phone: "" });
+  const [customer, setCustomer] = useState({
+    name: user?.name ?? "",
+    email: user?.email ?? "",
+    phone: "",
+  });
   const [address, setAddress] = useState({ street: "", city: "", region: "", notes: "" });
   const [payment, setPayment] = useState<(typeof PAYMENT_OPTIONS)[number]["value"]>("mpesa");
   const [orderNumber, setOrderNumber] = useState<string | null>(null);

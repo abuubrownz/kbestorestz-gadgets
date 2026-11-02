@@ -7,20 +7,27 @@ import {
   Bell,
   Calendar,
   Heart,
+  X,
 } from "lucide-react";
 import { PublicShell } from "@/components/kb/public-shell";
 import { RequireRole } from "@/components/kb/require-role";
 import { useAuth } from "@/lib/auth";
+import { useCatalogue } from "@/lib/catalogue";
+import { useWishlist } from "@/lib/wishlist";
 import { DeviceVisual } from "@/components/kb/device-visual";
 import { StatusBadge } from "@/components/kb/status-badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatTZS, orders, products, repairs } from "@/lib/data";
+import { formatTZS, orders, repairs } from "@/lib/data";
 
 export const Route = createFileRoute("/account")({
   staticData: { sitemap: false },
+  validateSearch: (search: Record<string, unknown>) => {
+    const tab = search["tab"];
+    return typeof tab === "string" ? { tab } : {};
+  },
   component: AccountPage,
   head: () => ({
     meta: [
@@ -57,8 +64,6 @@ const notifications = [
   { id: 4, text: "Warranty for Galaxy Tab S9 FE has expired.", time: "1 week ago" },
 ];
 
-const savedProducts = products.slice(0, 3);
-
 const loyaltyPoints = 3240;
 const loyaltyGoal = 5000;
 const activeRepairsCount = myRepairs.filter((r) => r.stage !== "Completed" && r.stage !== "Collected").length;
@@ -93,7 +98,11 @@ function AccountPage() {
 
 function AccountContent() {
   const { user } = useAuth();
+  const { products } = useCatalogue();
+  const { ids: savedIds, remove: removeSaved } = useWishlist();
+  const { tab: initialTab } = Route.useSearch();
   const firstName = user?.name.split(" ")[0] ?? "there";
+  const savedProducts = savedIds.flatMap((id) => products.find((p) => p.id === id) ?? []);
   return (
     <PublicShell>
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
@@ -103,16 +112,17 @@ function AccountContent() {
           <p className="text-muted-foreground">Track your orders, repairs, warranties and loyalty rewards in one place.</p>
           <p className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
             Sample data: the orders, repairs and points below are examples while online ordering is
-            being connected. Your real activity will appear here once it goes live.
+            being connected. Your wishlist is real and saved to your account.
           </p>
         </header>
 
-        <Tabs defaultValue="overview">
+        <Tabs defaultValue={initialTab ?? "overview"}>
           <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0">
             {[
               { value: "overview", label: "Overview" },
               { value: "orders", label: "Orders" },
               { value: "repairs", label: "Repairs" },
+              { value: "saved", label: `Saved${savedProducts.length > 0 ? ` (${savedProducts.length})` : ""}` },
               { value: "appointments", label: "Appointments" },
               { value: "warranty", label: "Warranty" },
               { value: "loyalty", label: "Loyalty" },
@@ -138,24 +148,35 @@ function AccountContent() {
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div className="rounded-2xl border bg-card p-6 shadow-card">
-                <h2 className="font-display text-lg font-bold">Saved products</h2>
-                <div className="mt-4 flex flex-col gap-3">
-                  {savedProducts.map((product) => (
-                    <Link
-                      key={product.id}
-                      to="/products/$productId"
-                      params={{ productId: product.id }}
-                      className="flex items-center gap-3 rounded-xl border p-3 transition-colors hover:bg-secondary/60"
-                    >
-                      <DeviceVisual product={product} className="h-12 w-12 shrink-0 rounded-lg" />
-                      <div className="min-w-0 flex-1">
-                        <p className="line-clamp-1 text-sm font-medium">{product.name}</p>
-                        <p className="text-xs text-muted-foreground">{formatTZS(product.price)}</p>
-                      </div>
-                      <Heart className="h-4 w-4 shrink-0 fill-destructive text-destructive" />
-                    </Link>
-                  ))}
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="font-display text-lg font-bold">Saved products</h2>
+                  <Link to="/products" className="text-xs font-medium text-accent hover:underline">
+                    Browse store
+                  </Link>
                 </div>
+                {savedProducts.length === 0 ? (
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    Tap the heart on any product to save it here. Your wishlist follows your account.
+                  </p>
+                ) : (
+                  <div className="mt-4 flex flex-col gap-3">
+                    {savedProducts.slice(0, 3).map((product) => (
+                      <Link
+                        key={product.id}
+                        to="/products/$productId"
+                        params={{ productId: product.id }}
+                        className="flex items-center gap-3 rounded-xl border p-3 transition-colors hover:bg-secondary/60"
+                      >
+                        <DeviceVisual product={product} className="h-12 w-12 shrink-0 rounded-lg" />
+                        <div className="min-w-0 flex-1">
+                          <p className="line-clamp-1 text-sm font-medium">{product.name}</p>
+                          <p className="text-xs text-muted-foreground">{formatTZS(product.price)}</p>
+                        </div>
+                        <Heart className="h-4 w-4 shrink-0 fill-destructive text-destructive" />
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-2xl border bg-card p-6 shadow-card">
@@ -226,6 +247,66 @@ function AccountContent() {
                 </div>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="saved" className="mt-6">
+            {savedProducts.length === 0 ? (
+              <div className="rounded-2xl border bg-card p-8 text-center shadow-card">
+                <Heart className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                <h2 className="mt-3 font-display text-lg font-bold">No saved products yet</h2>
+                <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                  Use the heart button on any product card to keep it here. Saved items stay with
+                  your account, not just this page.
+                </p>
+                <Link to="/products">
+                  <Button className="mt-4">Browse the store</Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {savedProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    className="flex gap-3 rounded-2xl border bg-card p-4 shadow-card"
+                  >
+                    <DeviceVisual product={product} className="h-20 w-20 shrink-0 rounded-xl" />
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        to="/products/$productId"
+                        params={{ productId: product.id }}
+                        className="line-clamp-2 text-sm font-semibold hover:text-accent"
+                      >
+                        {product.name}
+                      </Link>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {product.brand} · {product.category.replace("-", " ")}
+                      </p>
+                      <p className="mt-1 font-display text-sm font-bold">
+                        {formatTZS(product.price)}
+                      </p>
+                      <p
+                        className={
+                          product.stock > 0
+                            ? "text-xs text-success"
+                            : "text-xs text-destructive"
+                        }
+                      >
+                        {product.stock > 0 ? `In stock · ${product.stock} units` : "Out of stock"}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0"
+                      aria-label={`Remove ${product.name} from wishlist`}
+                      onClick={() => removeSaved(product.id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="appointments" className="mt-6">

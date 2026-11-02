@@ -1,11 +1,14 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import {
+  ArrowLeft,
   BellRing,
   CircleCheck,
   Eye,
   EyeOff,
+  KeyRound,
   Loader2,
   MailCheck,
+  MessageCircle,
   PackageCheck,
   ShieldCheck,
   Smartphone,
@@ -19,7 +22,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import brandLogo from "@/assets/brand/kbestoretz-logo.png";
 import { roleHome, useAuth, type AuthErrorCode } from "@/lib/auth";
+import { CONTACT_WHATSAPP } from "@/lib/contact";
 
 /** Only allow same-site relative paths as a post-login destination. */
 function safeRedirect(value: unknown): string | undefined {
@@ -59,6 +64,13 @@ function normalizePhone(value: string): string | null {
   const digits = value.replace(/[\s\-()]/g, "");
   const match = /^(?:\+?255|0)?([67]\d{8})$/.exec(digits);
   return match ? `+255${match[1]}` : null;
+}
+
+/** +255713134116 → +255 713 ••• 116, so the page never reprints the full number. */
+function maskPhone(value: string): string {
+  const phone = normalizePhone(value);
+  if (!phone) return value;
+  return `${phone.slice(0, 4)} ${phone.slice(4, 7)} ••• ${phone.slice(-3)}`;
 }
 
 const emailSchema = z.string().trim().toLowerCase().email("Enter a valid email address.").max(254);
@@ -125,12 +137,99 @@ function FieldError({ message }: { message?: string | undefined }) {
   ) : null;
 }
 
+const authPanels = {
+  signin: {
+    eyebrow: "Welcome back",
+    title: "Pick up where you left off",
+    intro: "Your orders, repairs and warranty records are waiting in your dashboard.",
+    points: [
+      {
+        Icon: PackageCheck,
+        tone: "text-cat-home",
+        text: "See every order, receipt and warranty in one place.",
+      },
+      {
+        Icon: Wrench,
+        tone: "text-cat-phone",
+        text: "Follow active repairs stage by stage instead of calling the shop.",
+      },
+      {
+        Icon: BellRing,
+        tone: "text-cat-audio",
+        text: "Get an email and SMS alert when your device is ready for collection.",
+      },
+      {
+        Icon: ShieldCheck,
+        tone: "text-cat-parts",
+        text: "Password plus phone-code verification keeps the account yours.",
+      },
+    ],
+    footnote: "Only tracking a repair? Use your ticket number — no account needed.",
+  },
+  register: {
+    eyebrow: "New to KBestoreTZ",
+    title: "One account for shopping, repairs and warranty",
+    intro:
+      "Free to create, no card details. About a minute to set up, then everything stays together.",
+    points: [
+      {
+        Icon: ShieldCheck,
+        tone: "text-cat-parts",
+        text: "Sign up with email, phone and a password — confirm the email, verify the phone.",
+      },
+      {
+        Icon: PackageCheck,
+        tone: "text-cat-home",
+        text: "Purchases and warranties are filed automatically as you order.",
+      },
+      {
+        Icon: Wrench,
+        tone: "text-cat-phone",
+        text: "Repairs booked with your account are tracked from drop-off to collection.",
+      },
+      {
+        Icon: BellRing,
+        tone: "text-cat-audio",
+        text: "Loyalty points and service updates follow you across every visit.",
+      },
+    ],
+    footnote: "In a hurry? You can still book a repair as a guest and track it with a ticket number.",
+  },
+  reset: {
+    eyebrow: "Account recovery",
+    title: "Get back into your account safely",
+    intro:
+      "We will email you a one-time link. Open it to choose a new password — we never send passwords by SMS or email.",
+    points: [
+      {
+        Icon: KeyRound,
+        tone: "text-cat-audio",
+        text: "The reset link is single-use and expires, so it cannot be reused later.",
+      },
+      {
+        Icon: MailCheck,
+        tone: "text-cat-home",
+        text: "Check the inbox for the email you registered with — including spam or promotions.",
+      },
+      {
+        Icon: ShieldCheck,
+        tone: "text-cat-parts",
+        text: "Your phone code is still required the next time you sign in, so keep your SIM active.",
+      },
+    ],
+    footnote: "No access to the email on the account? Message us and we will verify you another way.",
+  },
+} as const;
+
 function LoginPage() {
   const { user, ready, phoneMfaChallenge, phoneMfaError } = useAuth();
   const router = useRouter();
   const { redirect } = Route.useSearch();
   const [tab, setTab] = useState<"signin" | "register">("signin");
-  const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
+  const [verify, setVerify] = useState<{ email: string; phone: string } | null>(null);
+  const [forgot, setForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const panel = authPanels[forgot ? "reset" : tab];
 
   // Once a session exists (just signed in, or already signed in), leave this page.
   useEffect(() => {
@@ -143,49 +242,80 @@ function LoginPage() {
         <aside className="ink-panel hidden overflow-hidden rounded-3xl lg:block">
           <div className="rainbow-rule h-1 w-full" aria-hidden />
           <div className="p-8">
-            <p className="eyebrow text-white/60">KBestoreTZ account</p>
-            <h2 className="mt-2 font-display text-2xl font-bold">
-              One account for your devices, orders and repairs
-            </h2>
+            <img
+              src={brandLogo}
+              alt="KBestoreTZ — tech shopping"
+              className="mb-7 w-48"
+            />
+            <p className="eyebrow text-white/60">{panel.eyebrow}</p>
+            <h2 className="mt-2 font-display text-2xl font-bold">{panel.title}</h2>
+            <p className="mt-2 text-sm text-white/60">{panel.intro}</p>
             <ul className="mt-6 space-y-5 text-sm text-white/80">
-              {[
-                { Icon: Wrench, tone: "text-cat-phone", text: "Book a repair and follow every stage from drop-off to collection." },
-                { Icon: PackageCheck, tone: "text-cat-home", text: "See your orders and warranties in one place." },
-                { Icon: BellRing, tone: "text-cat-audio", text: "Get status updates when your device is ready." },
-                { Icon: ShieldCheck, tone: "text-cat-parts", text: "Email confirmation and phone codes help keep your account secure." },
-              ].map(({ Icon, tone, text }) => (
+              {panel.points.map(({ Icon, tone, text }) => (
                 <li key={text} className="flex gap-3">
                   <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${tone}`} />
                   <span>{text}</span>
                 </li>
               ))}
             </ul>
+            <p className="mt-7 border-t border-white/10 pt-4 text-xs text-white/55">
+              {panel.footnote}{" "}
+              {forgot ? (
+                <a
+                  href={`https://wa.me/${CONTACT_WHATSAPP}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-white/85 underline-offset-4 hover:underline"
+                >
+                  Message support
+                </a>
+              ) : (
+                <Link
+                  to={tab === "signin" ? "/repairs/track" : "/repairs/book"}
+                  className="font-medium text-white/85 underline-offset-4 hover:underline"
+                >
+                  {tab === "signin" ? "Track a repair" : "Book as a guest"}
+                </Link>
+              )}
+            </p>
           </div>
         </aside>
 
         <div className="mx-auto grid w-full max-w-md gap-4">
           <div className="text-center lg:text-left">
             <h1 className="font-display text-2xl font-bold">
-              {tab === "signin" ? "Welcome back" : "Create your account"}
+              {forgot
+                ? "Reset your password"
+                : tab === "signin"
+                  ? "Welcome back"
+                  : "Create your account"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {tab === "signin"
-                ? "Sign in to continue to your account."
-                : "It takes a minute. We will email you a link to confirm it is you."}
+              {forgot
+                ? "Enter the email you registered with and we will send a one-time reset link."
+                : tab === "signin"
+                  ? "Sign in to see your orders, repairs and warranty records."
+                  : "Keep orders, repairs and warranties together. Free, and no card details needed."}
             </p>
           </div>
 
           <Card className="p-6 shadow-card">
-            {verifyEmail ? (
+            {verify ? (
               <VerifyNotice
-                email={verifyEmail}
+                email={verify.email}
+                phone={verify.phone}
                 onDone={() => {
-                  setVerifyEmail(null);
+                  setVerify(null);
                   setTab("signin");
                 }}
               />
             ) : phoneMfaChallenge || phoneMfaError ? (
               <PhoneMfaForm />
+            ) : forgot ? (
+              <ForgotPasswordForm
+                initialEmail={forgotEmail}
+                onBack={() => setForgot(false)}
+              />
             ) : (
               <Tabs value={tab} onValueChange={(v) => setTab(v as "signin" | "register")}>
                 <TabsList className="grid w-full grid-cols-2">
@@ -193,10 +323,21 @@ function LoginPage() {
                   <TabsTrigger value="register">Create account</TabsTrigger>
                 </TabsList>
                 <TabsContent value="signin" className="mt-5">
-                  <SignInForm />
+                  <SignInForm
+                    onForgot={(email) => {
+                      setForgotEmail(email);
+                      setForgot(true);
+                    }}
+                  />
                 </TabsContent>
                 <TabsContent value="register" className="mt-5">
-                  <RegisterForm onRegistered={setVerifyEmail} />
+                  <RegisterForm
+                    onRegistered={setVerify}
+                    onForgot={(email) => {
+                      setForgotEmail(email);
+                      setForgot(true);
+                    }}
+                  />
                 </TabsContent>
               </Tabs>
             )}
@@ -224,6 +365,15 @@ function PhoneMfaForm() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = window.setInterval(() => {
+      setCooldown((seconds) => (seconds <= 1 ? 0 : seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [cooldown]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -241,13 +391,15 @@ function PhoneMfaForm() {
   }
 
   async function onResend() {
+    if (cooldown > 0) return;
     setBusy(true);
     setError(null);
     const result = await resendPhoneMfa();
     setBusy(false);
     if (result.ok) {
       setCode("");
-      setInfo("A new verification code was sent.");
+      setInfo("A new verification code was sent. It can take a minute to arrive.");
+      setCooldown(45);
     } else {
       setError(messageFor(result.code));
     }
@@ -259,12 +411,25 @@ function PhoneMfaForm() {
         <Smartphone className="h-5 w-5" />
       </span>
       <div className="text-center">
-        <h2 className="font-display text-lg font-bold">Verify your phone</h2>
+        <h2 className="font-display text-lg font-bold">
+          {phoneMfaChallenge?.isEnrollment ? "Verify your phone number" : "Enter your sign-in code"}
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {phoneMfaChallenge
-            ? `${phoneMfaChallenge.isEnrollment ? "Verify and secure your account" : "Enter the sign-in code"} sent to ${phoneMfaChallenge.phone}.`
-            : phoneMfaError}
+          {phoneMfaChallenge ? (
+            <>
+              We sent a six-digit SMS code to{" "}
+              <span className="font-medium text-foreground">{phoneMfaChallenge.phone}</span>.
+            </>
+          ) : (
+            phoneMfaError
+          )}
         </p>
+        {phoneMfaChallenge?.isEnrollment ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            This is the number you entered when you signed up. Verifying it now secures every future
+            sign-in.
+          </p>
+        ) : null}
       </div>
 
       {phoneMfaChallenge ? (
@@ -289,9 +454,17 @@ function PhoneMfaForm() {
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Verify and continue
           </Button>
-          <Button type="button" variant="outline" onClick={onResend} disabled={busy}>
-            Send a new code
+          <Button type="button" variant="outline" onClick={onResend} disabled={busy || cooldown > 0}>
+            {cooldown > 0 ? `Send a new code in ${cooldown}s` : "Send a new code"}
           </Button>
+          <a
+            href={`https://wa.me/${CONTACT_WHATSAPP}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            <MessageCircle className="h-4 w-4" /> No SMS, or wrong number? Message support
+          </a>
         </form>
       ) : null}
 
@@ -341,8 +514,8 @@ function PasswordInput({
   );
 }
 
-function SignInForm() {
-  const { signInWithPassword, resendConfirmation, sendPasswordReset } = useAuth();
+function SignInForm({ onForgot }: { onForgot: (email: string) => void }) {
+  const { signInWithPassword, resendConfirmation } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -365,19 +538,6 @@ function SignInForm() {
     setBusy(false);
     if (!result.ok) setFormError(result.code);
     // On success the session listener updates the user and the page redirects.
-  }
-
-  async function onForgot() {
-    setInfo(null);
-    const parsed = emailSchema.safeParse(email);
-    if (!parsed.success) {
-      setErrors({ email: "Enter your email above first." });
-      return;
-    }
-    setErrors({});
-    await sendPasswordReset(parsed.data);
-    // Same message whether or not the address has an account.
-    setInfo("If that email has an account, we have sent a link to reset the password.");
   }
 
   async function onResend() {
@@ -438,7 +598,7 @@ function SignInForm() {
       </Button>
       <button
         type="button"
-        onClick={onForgot}
+        onClick={() => onForgot(email)}
         className="text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
       >
         Forgot your password?
@@ -447,7 +607,13 @@ function SignInForm() {
   );
 }
 
-function RegisterForm({ onRegistered }: { onRegistered: (email: string) => void }) {
+function RegisterForm({
+  onRegistered,
+  onForgot,
+}: {
+  onRegistered: (account: { email: string; phone: string }) => void;
+  onForgot: (email: string) => void;
+}) {
   const { register } = useAuth();
   const [values, setValues] = useState({
     fullName: "",
@@ -473,14 +639,15 @@ function RegisterForm({ onRegistered }: { onRegistered: (email: string) => void 
     }
     setErrors({});
     setBusy(true);
+    const phone = normalizePhone(parsed.data.phone) ?? parsed.data.phone;
     const result = await register({
       fullName: parsed.data.fullName,
-      phone: normalizePhone(parsed.data.phone) ?? parsed.data.phone,
+      phone,
       email: parsed.data.email,
       password: parsed.data.password,
     });
     setBusy(false);
-    if (result.ok) onRegistered(parsed.data.email);
+    if (result.ok) onRegistered({ email: parsed.data.email, phone });
     else setFormError(result.code);
   }
 
@@ -507,6 +674,10 @@ function RegisterForm({ onRegistered }: { onRegistered: (email: string) => void 
           onChange={set("phone")}
         />
         <FieldError message={errors["phone"]} />
+        <p className="text-xs text-muted-foreground">
+          We text a six-digit code to this number as soon as you confirm your email. Use a number you
+          can receive SMS on now.
+        </p>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="rg-email">Email</Label>
@@ -552,13 +723,154 @@ function RegisterForm({ onRegistered }: { onRegistered: (email: string) => void 
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         Create account
       </Button>
+      <button
+        type="button"
+        onClick={() => onForgot(values.email)}
+        className="text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+      >
+        Already registered? Reset your password
+      </button>
     </form>
   );
 }
 
-function VerifyNotice({ email, onDone }: { email: string; onDone: () => void }) {
+function ForgotPasswordForm({
+  initialEmail,
+  onBack,
+}: {
+  initialEmail: string;
+  onBack: () => void;
+}) {
+  const { sendPasswordReset } = useAuth();
+  const [email, setEmail] = useState(initialEmail);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = window.setInterval(() => {
+      setCooldown((seconds) => (seconds <= 1 ? 0 : seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [cooldown]);
+
+  async function send(): Promise<void> {
+    const parsed = emailSchema.safeParse(email);
+    if (!parsed.success) {
+      setError("Enter a valid email address.");
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    const result = await sendPasswordReset(parsed.data);
+    setBusy(false);
+    if (!result.ok) {
+      setError(messageFor(result.code));
+      return;
+    }
+    setSent(true);
+    setCooldown(60);
+  }
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    await send();
+  }
+
+  if (sent) {
+    return (
+      <div className="grid gap-4 text-center">
+        <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-cat-home/10 text-cat-home">
+          <MailCheck className="h-5 w-5" />
+        </span>
+        <h2 className="font-display text-lg font-bold">Check your email</h2>
+        <p className="text-sm text-muted-foreground">
+          If <span className="font-medium text-foreground">{email}</span> has an account, we sent a
+          one-time link to reset the password. It can take a minute — check spam or promotions too.
+        </p>
+        <p className="rounded-lg border bg-secondary/40 p-3 text-xs text-muted-foreground">
+          The link opens a page where you choose a new password. It expires, so use it soon.
+        </p>
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
+        <Button variant="outline" onClick={() => void send()} disabled={busy || cooldown > 0}>
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {cooldown > 0 ? `Send the link again in ${cooldown}s` : "Send the link again"}
+        </Button>
+        <a
+          href={`https://wa.me/${CONTACT_WHATSAPP}`}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center justify-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          <MessageCircle className="h-4 w-4" /> No access to that email? Message support
+        </a>
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+      <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-accent/10 text-accent">
+        <KeyRound className="h-5 w-5" />
+      </span>
+      <div className="text-center">
+        <h2 className="font-display text-lg font-bold">Forgot your password?</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Enter the email on your account and we will send a one-time reset link.
+        </p>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="fp-email">Email</Label>
+        <Input
+          id="fp-email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          autoFocus
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        For privacy we show the same confirmation whether or not that address is registered.
+      </p>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <Button type="submit" className="w-full" disabled={busy}>
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+        Send reset link
+      </Button>
+      <Button type="button" variant="ghost" onClick={onBack}>
+        <ArrowLeft className="h-4 w-4" /> Back to sign in
+      </Button>
+    </form>
+  );
+}
+
+function VerifyNotice({
+  email,
+  phone,
+  onDone,
+}: {
+  email: string;
+  phone: string;
+  onDone: () => void;
+}) {
   const { resendConfirmation } = useAuth();
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="grid gap-4 text-center">
@@ -568,18 +880,52 @@ function VerifyNotice({ email, onDone }: { email: string; onDone: () => void }) 
       <h2 className="font-display text-lg font-bold">Check your email</h2>
       <p className="text-sm text-muted-foreground">
         If <span className="font-medium text-foreground">{email}</span> can be registered, we have
-        sent a confirmation link to it. Open the link, then come back here to sign in. Check your
-        spam folder if you do not see it.
+        sent a confirmation link to it.
       </p>
+
+      <ol className="grid gap-3 rounded-xl border bg-secondary/40 p-4 text-left text-sm">
+        <li className="flex gap-3">
+          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent/15 text-xs font-semibold text-accent">
+            1
+          </span>
+          <span>Open the link in your inbox to confirm the email address.</span>
+        </li>
+        <li className="flex gap-3">
+          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent/15 text-xs font-semibold text-accent">
+            2
+          </span>
+          <span>
+            The link brings you back here, and we text a six-digit code to{" "}
+            <span className="font-medium text-foreground">{maskPhone(phone)}</span>.
+          </span>
+        </li>
+        <li className="flex gap-3">
+          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent/15 text-xs font-semibold text-accent">
+            3
+          </span>
+          <span>Enter that code to finish setting up your account.</span>
+        </li>
+      </ol>
+
+      <p className="text-xs text-muted-foreground">
+        The SMS code is sent as soon as the email is confirmed. If it does not arrive, use “Send a new
+        code” on the next screen. Check spam or promotions if the email does not arrive.
+      </p>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
       <Button
         variant="outline"
         disabled={sent}
         onClick={async () => {
-          await resendConfirmation(email);
-          setSent(true);
+          const result = await resendConfirmation(email);
+          if (result.ok) setSent(true);
+          else setError(messageFor(result.code));
         }}
       >
-        {sent ? "Email sent again" : "Send it again"}
+        {sent ? "Email sent again" : "Send the email again"}
       </Button>
       <Button variant="ghost" onClick={onDone}>
         Back to sign in

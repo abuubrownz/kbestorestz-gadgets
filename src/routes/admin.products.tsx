@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Pencil, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { Minus, Pencil, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardShell } from "@/components/kb/dashboard-shell";
 import { StatusBadge } from "@/components/kb/status-badge";
@@ -21,7 +21,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { categories, products as seedProducts, type Product, formatTZS } from "@/lib/data";
+import { categories, type Product, formatTZS } from "@/lib/data";
+import { useCatalogue } from "@/lib/catalogue";
 
 export const Route = createFileRoute("/admin/products")({
   staticData: { sitemap: false },
@@ -40,7 +41,7 @@ export const Route = createFileRoute("/admin/products")({
 });
 
 function AdminProducts() {
-  const [items, setItems] = useState<Product[]>(seedProducts);
+  const { products: items, addProduct: createProduct, updateProduct, adjustStock } = useCatalogue();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [editing, setEditing] = useState<Product | null>(null);
@@ -55,21 +56,21 @@ function AdminProducts() {
   }, [items, query, category]);
 
   function saveEdit(updated: Product) {
-    setItems((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    updateProduct(updated);
     setEditing(null);
-    toast.success(`${updated.name} updated`);
+    toast.success(`${updated.name} updated`, { description: "Storefront and technician stock view synced." });
   }
 
   function addProduct(product: Product) {
-    setItems((prev) => [product, ...prev]);
+    createProduct(product);
     setAddOpen(false);
-    toast.success(`${product.name} added to catalog`);
+    toast.success(`${product.name} added to catalog`, { description: "Live on the storefront now." });
   }
 
   return (
     <DashboardShell
       title="Products"
-      subtitle="Catalog, pricing and stock management"
+      subtitle="Catalog, pricing and stock · shared live with the storefront and technicians"
       workspace="Admin console"
       nav={adminNav}
       actions={
@@ -137,11 +138,34 @@ function AdminProducts() {
                   <TableCell>{p.brand}</TableCell>
                   <TableCell>{formatTZS(p.price)}</TableCell>
                   <TableCell>
-                    <span className={p.stock <= 6 ? "font-semibold text-warning-foreground" : undefined}>{p.stock}</span>
-                    {p.stock <= 6 ? <StatusBadge label="Low stock" className="ml-2" /> : null}
+                    <div className="flex items-center gap-1">
+                      <span className={p.stock <= 6 ? "font-semibold text-warning-foreground" : undefined}>{p.stock}</span>
+                      {p.stock <= 6 ? <StatusBadge label="Low stock" className="ml-1" /> : null}
+                      <div className="ml-1 flex items-center">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          aria-label={`Decrease ${p.name} stock`}
+                          disabled={p.stock === 0}
+                          onClick={() => adjustStock(p.id, -1)}
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          aria-label={`Increase ${p.name} stock`}
+                          onClick={() => adjustStock(p.id, 1)}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell>
-                    <StatusBadge label={p.stock > 0 ? "In stock" : "Low stock"} />
+                    <StatusBadge label={p.stock > 0 ? "In stock" : "Out of stock"} />
                   </TableCell>
                   <TableCell className="text-right">
                     <Dialog open={editing?.id === p.id} onOpenChange={(open) => setEditing(open ? p : null)}>

@@ -6,6 +6,7 @@ import {
   Cpu,
   Flame,
   Laptop,
+  MessageCircle,
   PhoneCall,
   ShieldCheck,
   Smartphone,
@@ -13,6 +14,7 @@ import {
   Star,
   Timer,
   TrendingUp,
+  User,
   Wrench,
   Zap,
 } from "lucide-react";
@@ -24,9 +26,10 @@ import { PublicShell } from "@/components/kb/public-shell";
 import { ProductCard } from "@/components/kb/product-card";
 import { DeviceVisual } from "@/components/kb/device-visual";
 import heroDevices from "@/assets/hero-devices.jpg";
-import { categories, formatTZS, products, repairServices, reviews } from "@/lib/data";
+import { categories, formatTZS, repairServices, reviews } from "@/lib/data";
+import { useCatalogue } from "@/lib/catalogue";
 import { themeFor } from "@/lib/storefront-theme";
-import { CONTACT_PHONE_TEL } from "@/lib/contact";
+import { CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL, CONTACT_WHATSAPP } from "@/lib/contact";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -122,6 +125,7 @@ const savePercent = (price: number, compareAt: number) => Math.round((1 - price 
 
 function Home() {
   const [email, setEmail] = useState("");
+  const { products } = useCatalogue();
   const featured = products.slice(0, 8);
   const deals = products
     .filter((p) => typeof p.compareAt === "number" && p.compareAt > p.price)
@@ -169,6 +173,29 @@ function Home() {
                   <Wrench className="h-4 w-4" /> Book repair
                 </Button>
               </Link>
+            </div>
+            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-white/60">
+              <Link
+                to="/repairs/track"
+                className="inline-flex items-center gap-1.5 transition-colors hover:text-white"
+              >
+                <ShieldCheck className="h-3.5 w-3.5 text-cat-home" /> Track your repair
+              </Link>
+              <Link
+                to="/account"
+                className="inline-flex items-center gap-1.5 transition-colors hover:text-white"
+              >
+                <User className="h-3.5 w-3.5 text-cat-phone" /> Orders &amp; warranties
+              </Link>
+              <a
+                href={`https://wa.me/${CONTACT_WHATSAPP}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 transition-colors hover:text-white"
+              >
+                <MessageCircle className="h-3.5 w-3.5 text-cat-gaming" /> WhatsApp{" "}
+                {CONTACT_PHONE_DISPLAY}
+              </a>
             </div>
             <dl className="mt-12 grid max-w-lg grid-cols-3 gap-6 border-t border-white/10 pt-6">
               {[
@@ -288,31 +315,73 @@ function Home() {
           <div>
             <p className="eyebrow text-accent">Shop by category</p>
             <h2 className="mt-2 text-2xl font-bold sm:text-3xl">Featured categories</h2>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              Live picks from the same catalogue our admin and technician teams manage — prices and
+              stock update here as they work.
+            </p>
           </div>
           <Link to="/products" className="text-sm font-medium text-accent hover:underline">
             Browse the full store →
           </Link>
         </div>
-        <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((cat) => {
             const theme = themeFor(cat.slug);
+            const items = products.filter((p) => p.category === cat.slug);
+            const top = [...items]
+              .filter((p) => p.stock > 0)
+              .sort((a, b) => b.reviews - a.reviews)
+              .slice(0, 2);
+            const from = items.length > 0 ? Math.min(...items.map((p) => p.price)) : 0;
+
             return (
               <Link
                 key={cat.slug}
                 to="/products"
                 search={{ category: cat.slug }}
                 className={cn(
-                  "group relative overflow-hidden rounded-2xl border bg-card p-5 shadow-card transition-all hover:-translate-y-0.5",
+                  "group relative flex flex-col overflow-hidden rounded-2xl border bg-card p-5 shadow-card transition-all hover:-translate-y-0.5",
                   theme.hover,
                 )}
               >
                 <span aria-hidden className={cn("absolute inset-x-0 top-0 h-1", theme.bar)} />
-                <span className={cn("grid h-12 w-12 place-items-center rounded-xl", theme.tint)}>
-                  <theme.icon className="h-6 w-6" />
-                </span>
-                <h3 className="mt-4 text-sm font-semibold">{cat.name}</h3>
+                <div className="flex items-start justify-between gap-3">
+                  <span className={cn("grid h-12 w-12 place-items-center rounded-xl", theme.tint)}>
+                    <theme.icon className="h-6 w-6" />
+                  </span>
+                  <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                    {items.length} {items.length === 1 ? "product" : "products"}
+                  </span>
+                </div>
+                <h3 className="mt-4 font-display text-base font-semibold">{cat.name}</h3>
                 <p className="mt-1 text-xs text-muted-foreground">{cat.blurb}</p>
-                <p className={cn("mt-3 text-xs font-medium", theme.text)}>{cat.items} products →</p>
+                <ul className="mt-4 flex-1 space-y-2 border-t pt-3">
+                  {top.length > 0 ? (
+                    top.map((product) => (
+                      <li
+                        key={product.id}
+                        className="flex items-baseline justify-between gap-3 text-xs"
+                      >
+                        <span className="truncate font-medium">{product.name}</span>
+                        <span className="shrink-0 font-semibold tabular-nums">
+                          {formatTZS(product.price)}
+                        </span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-xs text-muted-foreground">
+                      Restocking soon — ask us for availability.
+                    </li>
+                  )}
+                </ul>
+                <div className="mt-4 flex items-center justify-between gap-3 text-xs">
+                  <span className={cn("font-medium", theme.text)}>
+                    {from > 0 ? `From ${formatTZS(from)}` : "Price on request"}
+                  </span>
+                  <span className="inline-flex items-center gap-1 font-medium text-muted-foreground transition-colors group-hover:text-foreground">
+                    Browse <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </div>
               </Link>
             );
           })}
@@ -600,8 +669,8 @@ function Home() {
             <div>
               <h2 className="text-2xl font-bold sm:text-3xl">Deals, drops and repair tips</h2>
               <p className="mt-3 max-w-md text-sm text-white/60">
-                Join 9,000+ subscribers getting new arrivals, price drops and device care advice
-                once a week. No spam.
+                New arrivals, price drops and device care advice, once a week. No spam, and you can
+                unsubscribe at any time.
               </p>
             </div>
             <form
