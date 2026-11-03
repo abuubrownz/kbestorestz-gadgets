@@ -174,6 +174,17 @@ with `'technician'` and their email. Nobody can give themselves staff access fro
 - Customers' names, phone numbers and emails are personal data. Before launch, confirm your
   privacy notice and data handling with a Tanzanian lawyer (Personal Data Protection Act, 2022).
 
+## Troubleshooting sign-in
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| “Email or password is incorrect” for an account that was just created | The email address has not been confirmed, or the password is genuinely wrong | Open the confirmation link, or use **Send the email again** on the sign-in screen |
+| No confirmation or reset email arrives | Supabase's built-in email is rate-limited and often filtered | Configure **Authentication → SMTP Settings** with a real sender before testing with customers |
+| The email link opens the live site (or an error) instead of `localhost:8080` | `http://localhost:8080/login` and `http://localhost:8080/reset-password` are not in **Redirect URLs** | Add both (plus `http://localhost:8080/**` while developing) under **Authentication → URL Configuration** |
+| Sign-in succeeds but no SMS arrives and no code screen appears | Phone provider is disabled on the project | The app signs the user in with email/password only (see §3); enable phone MFA when ready |
+| Signed in, but there is no Admin/Technician link | The auth migration is not applied, the role has not been granted, or the AAL2 policy is active without working phone MFA | Run §1, grant the role in §4–5, and finish §3 before applying the AAL2 migration |
+| “Too many attempts or emails sent” | Supabase Auth rate limit, including email sends | Wait a few minutes; for repeated testing use test phone numbers (§3) and a real SMTP sender |
+
 ## Testing checklist
 
 - Register a new account: you should see "Check your email" with a three-step notice that shows
