@@ -119,7 +119,7 @@ function messageFor(code: AuthErrorCode): string {
     case "weak_password":
       return "That password is too weak. Use at least 8 characters with letters and numbers.";
     case "rate_limited":
-      return "Too many attempts. Please wait a few minutes and try again.";
+      return "Too many attempts or emails sent. Please wait a few minutes and try again.";
     case "invalid_otp":
       return "That code is incorrect or expired. Check your SMS and try again.";
     case "network":

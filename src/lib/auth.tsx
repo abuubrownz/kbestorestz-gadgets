@@ -107,7 +107,12 @@ function toErrorCode(error: {
   if (code === "email_not_confirmed" || message.includes("email not confirmed")) {
     return "email_not_confirmed";
   }
-  if (code === "invalid_credentials" || message.includes("invalid login credentials")) {
+  if (
+    code === "invalid_credentials" ||
+    message.includes("invalid login credentials") ||
+    message.includes("invalid credentials") ||
+    message.includes("invalid email or password")
+  ) {
     return "invalid_credentials";
   }
   if (code === "weak_password" || message.includes("password")) return "weak_password";
@@ -242,7 +247,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setPhoneMfaError(null);
           if (!challengeRef.current) {
             activeChallengePromise ??= beginPhoneMfa(session);
-            challengeRef.current = await activeChallengePromise;
+            try {
+              challengeRef.current = await activeChallengePromise;
+            } catch (error) {
+              // Phone sign-in is optional until the Supabase project has a phone provider and a
+              // working SMS route. Locking every customer out of a password-only deployment is
+              // worse than signing them in at AAL1, so only fail closed when a *verified* phone
+              // factor exists (the account really does have a second factor to challenge).
+              activeChallengePromise = null;
+              const { data: factors, error: factorsError } =
+                await supabase.auth.mfa.listFactors();
+              const hasVerifiedPhone = !factorsError && (factors?.phone.length ?? 0) > 0;
+              if (hasVerifiedPhone) throw error;
+
+              console.warn(
+                "[auth] Phone verification could not start; continuing without it.",
+                error,
+              );
+              const next = await loadAuthUser(session);
+              if (!cancelled) {
+                setUser(next);
+                setPhoneMfaChallenge(null);
+                setPhoneMfaError(null);
+              }
+              return;
+            }
           }
           if (!cancelled) setPhoneMfaChallenge(challengeRef.current);
           return;

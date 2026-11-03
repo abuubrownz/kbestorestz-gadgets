@@ -1,8 +1,9 @@
 # Switching on real accounts (sign-up, login, email and phone verification)
 
-The website code is ready, but the **database must be prepared once** before anyone can register.
-Until you do this, sign-up and login will show an error. Nothing here needs code, and no
-password or key should ever be pasted into chat, GitHub or the website code.
+The website code is ready, but the **database must be prepared once** before staff roles and
+profiles work. Sign-in itself works as soon as the Supabase project accepts email/password users;
+until the first migration is applied, every account is treated as a **customer** and the profile
+name falls back to the name supplied at registration.
 
 ## 1. Create the tables (once)
 
@@ -20,6 +21,11 @@ After confirming the existing database schema matches the first migration, apply
 `supabase/migrations/20261028130000_require_aal2_for_roles.sql`. It requires a verified phone
 second factor before application roles can be read or changed. Do not apply it blindly to a
 project whose existing policies have not been checked.
+
+**Order matters:** finish section 3 (working phone MFA) before applying the AAL2 migration. That
+migration deliberately hides `user_roles` from AAL1 sessions, so on a project where phone MFA is
+not yet working, administrators would be treated as customers and would not see the admin console.
+
 
 ## 2. Turn on email confirmation
 
@@ -39,10 +45,11 @@ Supabase dashboard, **Authentication**:
 
 ## 3. Configure SMS phone verification
 
-The app requires a phone MFA code after every password sign-in. On a user's first sign-in, it
-enrols the Tanzanian mobile number supplied during registration and asks the user to verify it.
-Later sign-ins send a fresh code to that verified number. Supabase creates and verifies the OTP;
-the application does not store or handle the plaintext OTP.
+The app asks for a phone MFA code after every password sign-in **once the account has a verified
+phone factor**. On a user's first sign-in it enrols the Tanzanian mobile number supplied during
+registration and asks the user to verify it. Later sign-ins send a fresh code to that verified
+number. Supabase creates and verifies the OTP; the application does not store or handle the
+plaintext OTP.
 
 SMS delivery uses Supabase Auth's signed **Send SMS Hook** and an Edge Function adapter for
 Africa's Talking. This repository does not contain provider credentials, an approved sender ID,
@@ -69,8 +76,17 @@ or proof that live SMS delivery is enabled.
    before production use. Provider credentials and live SMS delivery are not configured by this
    repository change.
 
-If the phone MFA factor cannot be enrolled or the signed hook/provider fails, sign-in fails closed:
-the account does not reach its customer, technician, or admin area.
+If a **verified** phone factor exists but the challenge cannot start, sign-in fails closed: the
+account does not reach its customer, technician, or admin area. That is deliberate, so a working
+second factor cannot be bypassed by breaking the challenge.
+
+If the account has **no verified phone factor yet** and enrolment cannot start — the project's
+phone provider is off, the SMS hook is missing or the number is absent — the app logs a warning and
+signs the user in with email and password only (AAL1). This prevents a total lockout while the
+Supabase project is still being configured, and it is reported in the browser console. As soon as
+phone verification is configured, the next sign-in enrols the number and later sign-ins require the
+code. Do not treat the fallback as the production security model.
+
 There is no self-service phone replacement or recovery flow in this milestone. Define and test an
 account-recovery procedure before production so customers who lose access to their verified phone
 are not permanently locked out.
@@ -162,11 +178,14 @@ with `'technician'` and their email. Nobody can give themselves staff access fro
 
 - Register a new account: you should see "Check your email" with a three-step notice that shows
   the phone number masked, and **cannot** reach the account until you click the link.
-- Open the confirmation link: you land on **Verify your phone number** and the SMS hook requests a
-  code for the number entered at sign-up. If it does not arrive, **Send a new code** is disabled for
-  45 seconds and then works.
-- After entering the code you land on **My account**; `/admin` shows "You don't have access".
-- Sign out and sign in again: another SMS code is required before the account loads.
+- Open the confirmation link. With phone verification configured, you land on **Verify your phone
+  number** and the SMS hook requests a code for the number entered at sign-up. If it does not
+  arrive, **Send a new code** is disabled for 45 seconds and then works. With no phone provider or
+  SMS route configured, you are signed in with email and password only.
+- After the code (or the password-only fallback) you land on **My account**; `/admin` shows "You
+  don't have access" for a customer.
+- Sign out and sign in again: when a verified phone factor exists, another SMS code is required
+  before the account loads.
 - **Forgot your password?** opens the reset view from both the sign-in and registration panels. A
   valid email sends a link that opens **Choose a new password**; the same neutral confirmation shows
   for an address with no account.

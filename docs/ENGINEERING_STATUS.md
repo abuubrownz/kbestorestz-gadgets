@@ -3,7 +3,7 @@
 > Single source of truth for the CTO and every coding agent working on this repository.
 > Update the **Now / Next / Blocked** section at the end of each working session.
 >
-> Last verified: **2026-11-02** · branch `feat/real-auth` (uncommitted changes, awaiting CTO preview) · verified by an AI coding agent.
+> Last verified: **2026-11-02** · branch `feat/real-auth` (pushed at `2b836be`) · verified by an AI coding agent.
 
 ---
 
@@ -293,7 +293,8 @@ Beem branch when production volume justifies sender-ID approval. For zero-cost t
 test phone numbers with fixed OTPs. Full comparison is in `docs/AUTH_SETUP.md` §3.
 
 **Verified:** `bun x tsc --noEmit` passes; `/login` returns 200 with the new reset entry point;
-`bun run build` is re-run before hand-off.
+`bun run build` passes on the final tree. Committed and pushed as **`2b836be`** on `feat/real-auth`
+(no history rewrite).
 
 **Next in scope (unblocked):** repair bookings in a shared store so a signed-in booking appears under
 account → Repairs. **Blocked on CTO approval:** SMS provider/sender-ID switch and production
@@ -301,15 +302,49 @@ credentials; persisted catalogue/orders/wishlists (migrations).
 
 ---
 
+### 2026-11-03: unblock sign-in when phone MFA is not configured
+
+Live checks against the connected Supabase project found why users could not complete a sign-in:
+
+| Check | Result | Consequence |
+| --- | --- | --- |
+| `GET /auth/v1/settings` | `external.phone = false` | `mfa.enroll({ factorType: "phone" })` fails for every account |
+| same call | `mailer_autoconfirm = false`, `sms_provider = twilio` | confirmation emails need real SMTP; SMS codes cannot be delivered until a provider + hook are configured |
+| `GET /rest/v1/profiles`, `/rest/v1/user_roles` | HTTP 404 | `20261028120000_auth_roles_profiles.sql` is not applied; roles fall back to `customer` |
+
+The auth provider treated any failure to start phone enrolment as a hard sign-in failure, so a
+correct email/password still left the user without access. `src/lib/auth.tsx` now:
+
+- attempts phone enrolment/challenge at AAL1 as before;
+- if that fails **and the account has no verified phone factor**, logs a console warning and loads
+  the user with email/password only;
+- still fails closed when a **verified** phone factor exists but its challenge cannot start, so an
+  established second factor cannot be bypassed.
+
+Also widened the rate-limit copy to cover both login attempts and email sends.
+
+**CTO setup still required** (cannot be applied from the repository):
+1. Run `supabase/migrations/20261028120000_auth_roles_profiles.sql` in the Supabase SQL editor.
+2. Enable the phone provider and the Send SMS hook (test numbers first), then apply
+   `20261028130000_require_aal2_for_roles.sql`.
+3. Configure real SMTP for confirmation/reset email and add the site + redirect URLs.
+4. Grant staff roles with the SQL in `docs/AUTH_SETUP.md` §4–5.
+
+**Verified:** `bun x tsc --noEmit` passes; the auth endpoint is reachable (an invalid password
+returns `400`, as expected); `/login` and `/reset-password` return 200.
+
+---
+
 ## Now / Next / Blocked
 
-- **Now:** homepage cards, shared catalogue, logo, welcome dialog, tab-aware auth panels, link fixes,
-  member access (per-account wishlist, account-gated checkout with pre-filled contact details, Saved
-  tab) and the forgot-password/sign-up OTP refinements are implemented for review on
-  `feat/real-auth`. Commit/push awaits CTO approval after preview.
+- **Now:** the catalogue/member-access/auth slice is pushed at **`2b836be`** on `feat/real-auth`.
+  The follow-up sign-in fallback for projects without phone MFA is in this branch pending its own
+  push. Sign-in with email/password works when the Supabase project has no phone provider; staff
+  roles still require the auth migration plus phone MFA.
 - **Next:** move repair bookings into a shared store so a signed-in booking appears under
   account → Repairs; then apply the catalogue migration and swap the localStorage providers for
   Supabase reads/writes.
 - **Blocked:** live ordering/booking persistence (needs schema + CTO approval); production SMS
   delivery (needs an approved provider, sender ID and Edge Function secrets — Beem Africa recommended
-  for cost, Africa's Talking adapter already present); production email (needs SMTP provider).
+  for cost, Africa's Talking adapter already present); production email (needs SMTP provider);
+  staff role recognition (needs `20261028120000_auth_roles_profiles.sql` applied).
