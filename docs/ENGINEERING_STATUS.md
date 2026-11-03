@@ -3,7 +3,7 @@
 > Single source of truth for the CTO and every coding agent working on this repository.
 > Update the **Now / Next / Blocked** section at the end of each working session.
 >
-> Last verified: **2026-11-02** · branch `feat/real-auth` (pushed at `2b836be`) · verified by an AI coding agent.
+> Last verified: **2026-11-03** · branch `feat/real-auth` (pushed at `f44fb6e`) · verified by an AI coding agent.
 
 ---
 
@@ -338,9 +338,9 @@ returns `400`, as expected); `/login` and `/reset-password` return 200.
 ## Now / Next / Blocked
 
 - **Now:** the catalogue/member-access/auth slice is pushed at **`2b836be`** on `feat/real-auth`.
-  The follow-up sign-in fallback for projects without phone MFA is in this branch pending its own
-  push. Sign-in with email/password works when the Supabase project has no phone provider; staff
-  roles still require the auth migration plus phone MFA.
+  The sign-in fallback for projects without phone MFA is pushed at **`f44fb6e`**. Sign-in with
+  email/password works when the Supabase project has no phone provider; staff roles still require
+  the auth migration plus phone MFA.
 - **Next:** move repair bookings into a shared store so a signed-in booking appears under
   account → Repairs; then apply the catalogue migration and swap the localStorage providers for
   Supabase reads/writes.
