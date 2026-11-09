@@ -43,6 +43,26 @@ Supabase dashboard, **Authentication**:
   real customers register, set up a real sender (a service such as Resend, Brevo or Zoho) so
   confirmation emails arrive reliably and do not land in spam.
 
+### Optional: Facebook sign-in
+
+The login page shows **Continue with Facebook** only when the project reports the Facebook
+provider as enabled, so the button never dead-ends. To switch it on:
+
+1. In **Meta for Developers**, create an app and add the **Facebook Login** product.
+2. Add `https://<project-ref>.supabase.co/auth/v1/callback` to the Facebook Login **Valid OAuth
+   Redirect URIs**.
+3. In Supabase **Authentication → Sign In / Providers → Facebook**, enable the provider and paste
+   the Meta app ID and secret.
+4. Add `https://<site>/login` (and `http://localhost:8080/login` while testing) to the Supabase
+   redirect URLs.
+
+Facebook is the only social provider supported natively here. Instagram would need a custom Meta
+OAuth backend, Telegram would need a custom Login Widget plus a signed Edge Function, and WhatsApp
+is a messaging channel rather than an identity provider, so “sign in with WhatsApp” is not possible.
+
+Social accounts do not supply a Tanzanian phone number, so they skip phone MFA and sign in with the
+provider plus email. A phone can be added later as an account step.
+
 ## 3. Configure SMS phone verification
 
 The app asks for a phone MFA code after every password sign-in **once the account has a verified
@@ -157,6 +177,14 @@ account and approved templates.
 
 4. Sign out and sign in again. You will now see the Admin dashboard link.
 
+### The users & roles directory
+
+`/admin/users` (Admin console → **Users & roles**) lists every real account with name, phone, role
+and joined date, and filters by customer, technician and admin. It reads `profiles` and
+`user_roles`, so it shows a setup card until §1 has been applied. Email addresses live in
+Supabase's protected `auth` schema and are deliberately not exposed to the browser; add an
+admin-only RPC later if the team needs them.
+
 ## 5. Adding technicians
 
 Ask the technician to register on the website and confirm their email. Then run the same query
@@ -183,6 +211,9 @@ with `'technician'` and their email. Nobody can give themselves staff access fro
 | The email link opens the live site (or an error) instead of `localhost:8080` | `http://localhost:8080/login` and `http://localhost:8080/reset-password` are not in **Redirect URLs** | Add both (plus `http://localhost:8080/**` while developing) under **Authentication → URL Configuration** |
 | Sign-in succeeds but no SMS arrives and no code screen appears | Phone provider is disabled on the project | The app signs the user in with email/password only (see §3); enable phone MFA when ready |
 | Signed in, but there is no Admin/Technician link | The auth migration is not applied, the role has not been granted, or the AAL2 policy is active without working phone MFA | Run §1, grant the role in §4–5, and finish §3 before applying the AAL2 migration |
+| “Continue with Facebook” is missing | Facebook is not enabled on the Supabase project | The button is hidden by design until §2 (Facebook) is configured |
+| Facebook returns to the site with an error | The Meta callback or Supabase redirect URL is wrong | Recheck the callback and redirect URLs in §2 |
+| `/admin/users` shows a setup card | `profiles` / `user_roles` are missing | Apply §1, then reload |
 | “Too many attempts or emails sent” | Supabase Auth rate limit, including email sends | Wait a few minutes; for repeated testing use test phone numbers (§3) and a real SMTP sender |
 
 ## Testing checklist

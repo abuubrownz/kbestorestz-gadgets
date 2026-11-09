@@ -3,7 +3,7 @@
 > Single source of truth for the CTO and every coding agent working on this repository.
 > Update the **Now / Next / Blocked** section at the end of each working session.
 >
-> Last verified: **2026-11-03** · branch `feat/real-auth` (pushed at `f44fb6e`) · verified by an AI coding agent.
+> Last verified: **2026-11-04** · branch `feat/real-auth` (pushed at `92ff3af`) · verified by an AI coding agent.
 
 ---
 
@@ -335,16 +335,65 @@ returns `400`, as expected); `/login` and `/reset-password` return 200.
 
 ---
 
+### 2026-11-04: Facebook sign-in + real users directory (awaiting CTO preview)
+
+Two additions on top of `92ff3af`. Both are **uncommitted** until the CTO reviews the preview.
+
+**Facebook sign-in (Facebook only).**
+- `src/lib/auth.tsx` gained `signInWithOAuth("facebook")` and a `provider_unavailable` error code,
+  so a provider that is switched off maps to a helpful message instead of a generic failure.
+- `/login` shows **Continue with Facebook** above the email tabs, separated by an “or use your
+  email” divider. The button is rendered only when the project's public
+  `GET /auth/v1/settings` reports `external.facebook === true`; a failed capability check never
+  blocks email/password sign-in. The OAuth return path is `/login`, which forwards the user by role.
+- **Why only Facebook:** Instagram is not a Supabase provider (needs a custom Meta OAuth backend),
+  Telegram needs a custom Login Widget plus a signed Edge Function, and WhatsApp is a messaging
+  channel, not an identity provider — “sign in with WhatsApp” is not possible. WhatsApp stays an
+  OTP/notification channel. Social accounts carry no Tanzanian phone number, so they sign in with
+  the provider plus email and skip phone MFA.
+- Live check: `external.facebook = false` on the connected project, so the button stays hidden until
+  a Meta app exists and the provider is enabled (steps in `docs/AUTH_SETUP.md` §2).
+
+**Real users directory (admin only).**
+- New `src/routes/admin.users.tsx` at **Admin console → Users & roles** (`/admin/users`). It reads
+  `profiles` (name, phone, joined date) and `user_roles`, shows customer/technician/admin counts,
+  role filter chips and a name/phone search. Guarded by `DashboardShell`, which defaults to
+  `admin` only.
+- When the tables are missing the page shows a setup card that names
+  `20261028120000_auth_roles_profiles.sql` instead of an error; other failures show the message and
+  a retry. No email column: addresses live in Supabase's protected `auth` schema and need an
+  admin-only RPC before they can be shown.
+- `src/components/admin/nav.ts` adds the `Users & roles` entry. The older `/admin/customers` page is
+  still sample CRM data and is unchanged.
+
+**Docs:** `docs/AUTH_SETUP.md` gained the Facebook section, the users-directory note and two new
+troubleshooting rows.
+
+**Verified:** `bun x tsc --noEmit` passes; `bun run build` passes and regenerated
+`src/routeTree.gen.ts` with `/admin/users`; `/login` and `/admin/users` return 200 from the dev
+server; the auth settings endpoint allows the `apikey` header from the browser origin (CORS `*`).
+
+**Not verified:** Facebook end-to-end (provider disabled, no Meta app) and the populated directory
+(tables 404 until the migration is applied). The in-app browser is disconnected, so there are no
+screenshots.
+
+---
+
 ## Now / Next / Blocked
 
 - **Now:** the catalogue/member-access/auth slice is pushed at **`2b836be`** on `feat/real-auth`.
-  The sign-in fallback for projects without phone MFA is pushed at **`f44fb6e`**. Sign-in with
+  The sign-in fallback for projects without phone MFA is pushed at **`f44fb6e`**, and the
+  troubleshooting docs at **`92ff3af`**. Facebook sign-in and the admin `/admin/users` directory are
+  implemented, verified by tsc/build and awaiting CTO preview before commit/push. Sign-in with
   email/password works when the Supabase project has no phone provider; staff roles still require
   the auth migration plus phone MFA.
-- **Next:** move repair bookings into a shared store so a signed-in booking appears under
-  account → Repairs; then apply the catalogue migration and swap the localStorage providers for
-  Supabase reads/writes.
-- **Blocked:** live ordering/booking persistence (needs schema + CTO approval); production SMS
-  delivery (needs an approved provider, sender ID and Edge Function secrets — Beem Africa recommended
-  for cost, Africa's Talking adapter already present); production email (needs SMTP provider);
-  staff role recognition (needs `20261028120000_auth_roles_profiles.sql` applied).
+- **Next:** after CTO approval, commit and push the Facebook + users-directory slice; then move
+  repair bookings into a shared store so a signed-in booking appears under account → Repairs; then
+  apply the catalogue migration and swap the localStorage providers for Supabase reads/writes.
+- **Blocked:** `/admin/users` is populated only after
+  `20261028120000_auth_roles_profiles.sql` is applied (both tables currently return 404); the
+  Facebook button stays hidden until a Meta app exists and the provider is enabled; live
+  ordering/booking persistence (needs schema + CTO approval); production SMS delivery (needs an
+  approved provider, sender ID and Edge Function secrets — Beem Africa recommended for cost,
+  Africa's Talking adapter already present); production email (needs SMTP provider); staff role
+  recognition and AAL2 (need the auth migration, a role grant and working phone MFA).

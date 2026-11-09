@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Wrench, Boxes, Users, BarChart3, HardHat } from "lucide-react";
+import { LayoutDashboard, Package, Wrench, Boxes, Users, UserCog, BarChart3, HardHat } from "lucide-react";
 import type { DashboardNavItem } from "@/components/kb/dashboard-shell";
 
 export const adminNav: DashboardNavItem[] = [
@@ -7,6 +7,7 @@ export const adminNav: DashboardNavItem[] = [
   { to: "/admin/repairs", label: "Repairs", icon: Wrench },
   { to: "/admin/inventory", label: "Inventory", icon: Boxes },
   { to: "/admin/customers", label: "Customers", icon: Users },
+  { to: "/admin/users", label: "Users & roles", icon: UserCog },
   { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/technician", label: "Technician", icon: HardHat },
 ];

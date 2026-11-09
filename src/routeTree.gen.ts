@@ -23,6 +23,7 @@ import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
 import { Route as AdminInventoryRouteImport } from './routes/admin.inventory'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminRepairsRouteImport } from './routes/admin.repairs'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as ProductsIndexRouteImport } from './routes/products.index'
 import { Route as ProductsProductIdRouteImport } from './routes/products.$productId'
 import { Route as RepairsIndexRouteImport } from './routes/repairs.index'
@@ -99,6 +100,11 @@ const AdminRepairsRoute = AdminRepairsRouteImport.update({
   path: '/admin/repairs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductsIndexRoute = ProductsIndexRouteImport.update({
   id: '/products/',
   path: '/products/',
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/repairs': typeof AdminRepairsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/repairs/book': typeof RepairsBookRoute
   '/repairs/track': typeof RepairsTrackRoute
@@ -160,6 +167,7 @@ export interface FileRoutesByTo {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/repairs': typeof AdminRepairsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/repairs/book': typeof RepairsBookRoute
   '/repairs/track': typeof RepairsTrackRoute
@@ -182,6 +190,7 @@ export interface FileRoutesById {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/repairs': typeof AdminRepairsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/repairs/book': typeof RepairsBookRoute
   '/repairs/track': typeof RepairsTrackRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/products'
     | '/admin/repairs'
+    | '/admin/users'
     | '/products/$productId'
     | '/repairs/book'
     | '/repairs/track'
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/products'
     | '/admin/repairs'
+    | '/admin/users'
     | '/products/$productId'
     | '/repairs/book'
     | '/repairs/track'
@@ -247,6 +258,7 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/products'
     | '/admin/repairs'
+    | '/admin/users'
     | '/products/$productId'
     | '/repairs/book'
     | '/repairs/track'
@@ -269,6 +281,7 @@ export interface RootRouteChildren {
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminRepairsRoute: typeof AdminRepairsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   ProductsProductIdRoute: typeof ProductsProductIdRoute
   RepairsBookRoute: typeof RepairsBookRoute
   RepairsTrackRoute: typeof RepairsTrackRoute
@@ -377,6 +390,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRepairsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/products/': {
       id: '/products/'
       path: '/products'
@@ -429,6 +449,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminInventoryRoute: AdminInventoryRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminRepairsRoute: AdminRepairsRoute,
+  AdminUsersRoute: AdminUsersRoute,
   ProductsProductIdRoute: ProductsProductIdRoute,
   RepairsBookRoute: RepairsBookRoute,
   RepairsTrackRoute: RepairsTrackRoute,

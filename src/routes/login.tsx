@@ -5,6 +5,7 @@ import {
   CircleCheck,
   Eye,
   EyeOff,
+  Facebook,
   KeyRound,
   Loader2,
   MailCheck,
@@ -122,6 +123,8 @@ function messageFor(code: AuthErrorCode): string {
       return "Too many attempts or emails sent. Please wait a few minutes and try again.";
     case "invalid_otp":
       return "That code is incorrect or expired. Check your SMS and try again.";
+    case "provider_unavailable":
+      return "That sign-in method isn't switched on yet. Use your email and password, or contact support.";
     case "network":
       return "We could not reach the server. Check your connection and try again.";
     default:
@@ -135,6 +138,89 @@ function FieldError({ message }: { message?: string | undefined }) {
       {message}
     </p>
   ) : null;
+}
+
+/**
+ * Facebook login is only offered when the Supabase project has the provider enabled.
+ * The public auth settings endpoint needs no secret, so this check is safe in the browser.
+ */
+function useFacebookEnabled(): boolean {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    const url = import.meta.env["VITE_SUPABASE_URL"];
+    const key = import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
+    if (!url || !key) return;
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    fetch(`${url}/auth/v1/settings`, {
+      headers: { apikey: key },
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((settings: { external?: { facebook?: boolean } } | null) => {
+        if (!cancelled) setEnabled(Boolean(settings?.external?.facebook));
+      })
+      .catch(() => {
+        // A failed capability check must never block email/password sign-in.
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, []);
+
+  return enabled;
+}
+
+function FacebookSignIn() {
+  const { signInWithOAuth } = useAuth();
+  const enabled = useFacebookEnabled();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!enabled) return null;
+
+  return (
+    <div className="grid gap-3">
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          const result = await signInWithOAuth("facebook");
+          if (!result.ok) {
+            setBusy(false);
+            setError(messageFor(result.code));
+          }
+          // On success Supabase redirects to Facebook, then back to /login.
+        }}
+      >
+        {busy ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Facebook className="h-4 w-4 text-[#1877F2]" aria-hidden />
+        )}
+        Continue with Facebook
+      </Button>
+      {error ? (
+        <p role="alert" className="text-center text-xs text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
+        or use your email
+        <span className="h-px flex-1 bg-border" />
+      </div>
+    </div>
+  );
 }
 
 const authPanels = {
@@ -317,29 +403,32 @@ function LoginPage() {
                 onBack={() => setForgot(false)}
               />
             ) : (
-              <Tabs value={tab} onValueChange={(v) => setTab(v as "signin" | "register")}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="signin">Sign in</TabsTrigger>
-                  <TabsTrigger value="register">Create account</TabsTrigger>
-                </TabsList>
-                <TabsContent value="signin" className="mt-5">
-                  <SignInForm
-                    onForgot={(email) => {
-                      setForgotEmail(email);
-                      setForgot(true);
-                    }}
-                  />
-                </TabsContent>
-                <TabsContent value="register" className="mt-5">
-                  <RegisterForm
-                    onRegistered={setVerify}
-                    onForgot={(email) => {
-                      setForgotEmail(email);
-                      setForgot(true);
-                    }}
-                  />
-                </TabsContent>
-              </Tabs>
+              <div className="grid gap-5">
+                <FacebookSignIn />
+                <Tabs value={tab} onValueChange={(v) => setTab(v as "signin" | "register")}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="signin">Sign in</TabsTrigger>
+                    <TabsTrigger value="register">Create account</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="signin" className="mt-5">
+                    <SignInForm
+                      onForgot={(email) => {
+                        setForgotEmail(email);
+                        setForgot(true);
+                      }}
+                    />
+                  </TabsContent>
+                  <TabsContent value="register" className="mt-5">
+                    <RegisterForm
+                      onRegistered={setVerify}
+                      onForgot={(email) => {
+                        setForgotEmail(email);
+                        setForgot(true);
+                      }}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </div>
             )}
           </Card>
 

@@ -74,6 +74,7 @@ export type AuthErrorCode =
   | "rate_limited"
   | "network"
   | "invalid_otp"
+  | "provider_unavailable"
   | "unknown";
 
 type AuthContextValue = {
@@ -83,6 +84,8 @@ type AuthContextValue = {
   /** False until the stored session (and its role) has been read on the client. */
   ready: boolean;
   signInWithPassword: (email: string, password: string) => Promise<AuthResult>;
+  /** Starts the Supabase OAuth redirect. Only providers enabled in Supabase are offered. */
+  signInWithOAuth: (provider: "facebook") => Promise<AuthResult>;
   verifyPhoneMfa: (code: string) => Promise<AuthResult>;
   resendPhoneMfa: () => Promise<AuthResult>;
   cancelPhoneMfa: () => Promise<void>;
@@ -114,6 +117,15 @@ function toErrorCode(error: {
     message.includes("invalid email or password")
   ) {
     return "invalid_credentials";
+  }
+  if (
+    code === "provider_not_enabled" ||
+    code === "provider_disabled" ||
+    message.includes("provider is not enabled") ||
+    message.includes("provider is not supported") ||
+    message.includes("unsupported provider")
+  ) {
+    return "provider_unavailable";
   }
   if (code === "weak_password" || message.includes("password")) return "weak_password";
   if (error.status === 429 || code.includes("rate_limit") || message.includes("rate limit")) {
@@ -327,6 +339,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const signInWithOAuth = useCallback(async (provider: "facebook") => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          // The login page handles the returned session and forwards the user by role.
+          redirectTo: `${window.location.origin}/login`,
+        },
+      });
+      return error ? ({ ok: false, code: toErrorCode(error) } as const) : ({ ok: true } as const);
+    } catch {
+      return { ok: false, code: "network" } as const;
+    }
+  }, []);
+
   const verifyPhoneMfa = useCallback(async (code: string): Promise<AuthResult> => {
     const challenge = challengeRef.current;
     if (!challenge || !/^\d{6}$/.test(code)) return { ok: false, code: "invalid_otp" };
@@ -467,6 +494,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       phoneMfaError,
       ready,
       signInWithPassword,
+      signInWithOAuth,
       verifyPhoneMfa,
       resendPhoneMfa,
       cancelPhoneMfa,
@@ -483,6 +511,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       phoneMfaError,
       ready,
       signInWithPassword,
+      signInWithOAuth,
       verifyPhoneMfa,
       resendPhoneMfa,
       cancelPhoneMfa,
