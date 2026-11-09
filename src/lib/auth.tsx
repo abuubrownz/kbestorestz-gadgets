@@ -14,19 +14,29 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Roles and access
  * ----------------
- * admin       – full store console (/admin/*) and the technician workspace
- * technician  – technician workspace (/technician) only
- * customer    – storefront and own account only
+ * customer        – storefront and own account
+ * technician      – assigned repairs and the technician workspace
+ * store_manager   – assigned branch operations (/manager workspace)
+ * admin           – daily operations (/admin console)
+ * finance_officer – payments, invoices, refunds and reconciliation (/finance workspace)
+ * super_admin     – global administration, roles, security and audit
  *
  * Accounts are real Supabase Auth users: they register with an email address and password
- * and must confirm that address before they can sign in. Roles are read from the
- * `user_roles` table (see supabase/migrations). Nobody can choose their own role: everyone
- * who registers is a customer, and staff roles are granted by the owner in the database.
+ * and must confirm that address before they can sign in. Active roles are read from
+ * `user_role_assignments` joined with `roles` (see supabase/migrations). Nobody can choose
+ * their own role: everyone who registers is a customer, and staff roles are granted by an
+ * authorised administrator in the database.
  *
  * The route guards in this app only decide what the interface shows. Real protection of data
  * comes from row-level security in the database, so every table must have its own policies.
  */
-export type Role = "admin" | "technician" | "customer";
+export type Role =
+  | "super_admin"
+  | "admin"
+  | "finance_officer"
+  | "store_manager"
+  | "technician"
+  | "customer";
 
 export type AuthUser = {
   id: string;
@@ -34,23 +44,43 @@ export type AuthUser = {
   email: string;
   phone: string | null;
   role: Role;
+  /** Every active role held, highest privilege first. */
+  roles: Role[];
 };
 
 export const roleLabels: Record<Role, string> = {
+  super_admin: "Super Admin",
   admin: "Administrator",
+  finance_officer: "Finance Officer",
+  store_manager: "Store Manager",
   technician: "Technician",
   customer: "Customer",
 };
 
 /** Where each role lands after signing in. */
 export const roleHome: Record<Role, string> = {
+  super_admin: "/admin",
   admin: "/admin",
+  // The dedicated /finance and /manager workspaces ship with the permission-guard
+  // work; until then these roles use their own account area.
+  finance_officer: "/account",
+  store_manager: "/account",
   technician: "/technician",
   customer: "/account",
 };
 
 /** Highest privilege first: a user holding several roles acts as the highest one. */
-const ROLE_PRIORITY: Role[] = ["admin", "technician", "customer"];
+const ROLE_PRIORITY: Role[] = [
+  "super_admin",
+  "admin",
+  "finance_officer",
+  "store_manager",
+  "technician",
+  "customer",
+];
+
+/** Every role. Self-service routes such as /account and /checkout are open to all of them. */
+export const allRoles: Role[] = [...ROLE_PRIORITY];
 
 export type RegisterInput = {
   fullName: string;
@@ -137,14 +167,27 @@ function toErrorCode(error: {
 
 async function loadAuthUser(session: Session): Promise<AuthUser> {
   const authUser = session.user;
-  const [rolesResult, profileResult] = await Promise.all([
-    supabase.from("user_roles").select("role").eq("user_id", authUser.id),
+  const [assignmentsResult, rolesResult, profileResult] = await Promise.all([
+    supabase
+      .from("user_role_assignments")
+      .select("role_id, revoked_at, expires_at")
+      .eq("user_id", authUser.id),
+    supabase.from("roles").select("id, code"),
     supabase.from("profiles").select("full_name, phone").eq("id", authUser.id).maybeSingle(),
   ]);
 
   // If roles cannot be read, fall back to the LOWEST privilege - never grant more on error.
-  const held = new Set<Role>((rolesResult.data ?? []).map((r) => r.role));
-  const role = ROLE_PRIORITY.find((r) => held.has(r)) ?? "customer";
+  const roleCodeById = new Map((rolesResult.data ?? []).map((row) => [row.id, row.code as Role]));
+  const now = Date.now();
+  const held = new Set<Role>();
+  for (const assignment of assignmentsResult.data ?? []) {
+    if (assignment.revoked_at) continue;
+    if (assignment.expires_at && new Date(assignment.expires_at).getTime() <= now) continue;
+    const code = roleCodeById.get(assignment.role_id);
+    if (code) held.add(code);
+  }
+  const roles = ROLE_PRIORITY.filter((role) => held.has(role));
+  const role = roles[0] ?? "customer";
 
   const metadata = authUser.user_metadata as { full_name?: unknown; phone?: unknown } | null;
   const metaName = typeof metadata?.full_name === "string" ? metadata.full_name : "";
@@ -157,6 +200,7 @@ async function loadAuthUser(session: Session): Promise<AuthUser> {
     email,
     phone: profileResult.data?.phone ?? (typeof metadata?.phone === "string" ? metadata.phone : null),
     role,
+    roles: roles.length > 0 ? roles : ["customer"],
   };
 }
 
@@ -482,7 +526,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasRole = useCallback(
     (roles: Role | Role[]) => {
       if (!user) return false;
-      return (Array.isArray(roles) ? roles : [roles]).includes(user.role);
+      // A Super Admin has global UI access; data access is still checked by RLS.
+      if (user.roles.includes("super_admin")) return true;
+      const requested = Array.isArray(roles) ? roles : [roles];
+      return requested.some((role) => user.roles.includes(role));
     },
     [user],
   );

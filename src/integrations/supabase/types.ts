@@ -35,26 +35,85 @@ export type Database = {
         }
         Relationships: []
       }
-      user_roles: {
+      roles: {
         Row: {
+          code: string
           created_at: string
+          description: string | null
           id: string
-          role: Database["public"]["Enums"]["app_role"]
+          is_system: boolean
+          name: string
+          rank: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          rank: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          rank?: number
+        }
+        Relationships: []
+      }
+      user_role_assignments: {
+        Row: {
+          approval_id: string | null
+          branch_id: string | null
+          expires_at: string | null
+          granted_at: string
+          granted_by: string | null
+          id: string
+          reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          role_id: string
           user_id: string
         }
         Insert: {
-          created_at?: string
+          approval_id?: string | null
+          branch_id?: string | null
+          expires_at?: string | null
+          granted_at?: string
+          granted_by?: string | null
           id?: string
-          role: Database["public"]["Enums"]["app_role"]
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role_id: string
           user_id: string
         }
         Update: {
-          created_at?: string
+          approval_id?: string | null
+          branch_id?: string | null
+          expires_at?: string | null
+          granted_at?: string
+          granted_by?: string | null
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_role_assignments_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

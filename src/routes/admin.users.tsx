@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, Search, ShieldCheck, Users, Wrench } from "lucide-react";
+import { Loader2, Search, ShieldCheck, UserCog, Users, Wrench } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { DashboardShell } from "@/components/kb/dashboard-shell";
 import { StatusBadge } from "@/components/kb/status-badge";
@@ -20,9 +20,15 @@ export const Route = createFileRoute("/admin/users")({
       { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex, nofollow" },
       { title: "Users & roles | KBestoreTZ Admin" },
-      { name: "description", content: "Every real KBestoreTZ account, grouped by customer, technician and admin role." },
+      {
+        name: "description",
+        content: "Every real KBestoreTZ account with its active customer, staff and administrator roles.",
+      },
       { property: "og:title", content: "Users & roles | KBestoreTZ Admin" },
-      { property: "og:description", content: "Every real KBestoreTZ account, grouped by customer, technician and admin role." },
+      {
+        property: "og:description",
+        content: "Every real KBestoreTZ account with its active customer, staff and administrator roles.",
+      },
     ],
   }),
   component: AdminUsers,
@@ -42,11 +48,20 @@ type LoadState =
   | { status: "error"; message: string }
   | { status: "ready"; users: DirectoryUser[] };
 
-const roleOrder: Role[] = ["admin", "technician", "customer"];
+const roleOrder: Role[] = [
+  "super_admin",
+  "admin",
+  "finance_officer",
+  "store_manager",
+  "technician",
+  "customer",
+];
 
-function roleTone(role: Role): "neutral" | "info" | "warning" {
+function roleTone(role: Role): "neutral" | "info" | "success" | "warning" | "danger" {
+  if (role === "super_admin") return "danger";
   if (role === "admin") return "info";
-  if (role === "technician") return "warning";
+  if (role === "finance_officer") return "success";
+  if (role === "technician" || role === "store_manager") return "warning";
   return "neutral";
 }
 
@@ -66,44 +81,47 @@ function AdminUsers() {
     let cancelled = false;
 
     async function load() {
-      const [profiles, roles] = await Promise.all([
+      const [profiles, assignments, roles] = await Promise.all([
         supabase
           .from("profiles")
           .select("id, full_name, phone, created_at")
           .order("created_at", { ascending: false }),
-        supabase.from("user_roles").select("user_id, role"),
+        supabase
+          .from("user_role_assignments")
+          .select("user_id, role_id, revoked_at, expires_at"),
+        supabase.from("roles").select("id, code"),
       ]);
       if (cancelled) return;
 
-      const error = profiles.error ?? roles.error;
+      const error = profiles.error ?? assignments.error ?? roles.error;
       if (error) {
-        // 42P01 = undefined_table. The auth migration has not been applied yet.
+        // 42P01 = undefined_table. The RBAC migrations have not been applied yet.
         const missingTable =
           error.code === "42P01" ||
           /does not exist|schema cache|could not find the table/i.test(error.message);
-        setState(
-          missingTable
-            ? { status: "setup" }
-            : { status: "error", message: error.message },
-        );
+        setState(missingTable ? { status: "setup" } : { status: "error", message: error.message });
         return;
       }
 
+      const codeById = new Map((roles.data ?? []).map((row) => [row.id, row.code as Role]));
+      const now = Date.now();
       const rolesByUser = new Map<string, Set<Role>>();
-      for (const row of roles.data ?? []) {
-        if (!row.role) continue;
-        const held = rolesByUser.get(row.user_id) ?? new Set<Role>();
-        held.add(row.role as Role);
-        rolesByUser.set(row.user_id, held);
+
+      for (const assignment of assignments.data ?? []) {
+        if (assignment.revoked_at) continue;
+        if (assignment.expires_at && new Date(assignment.expires_at).getTime() <= now) continue;
+        const code = codeById.get(assignment.role_id);
+        if (!code) continue;
+        const held = rolesByUser.get(assignment.user_id) ?? new Set<Role>();
+        held.add(code);
+        rolesByUser.set(assignment.user_id, held);
       }
 
       const users: DirectoryUser[] = (profiles.data ?? []).map((profile) => ({
         id: profile.id,
         name: profile.full_name?.trim() || "Unnamed account",
         phone: profile.phone,
-        roles: [...(rolesByUser.get(profile.id) ?? new Set<Role>())].sort(
-          (a, b) => roleOrder.indexOf(a) - roleOrder.indexOf(b),
-        ),
+        roles: roleOrder.filter((held) => rolesByUser.get(profile.id)?.has(held)),
         joinedAt: profile.created_at,
       }));
 
@@ -118,12 +136,25 @@ function AdminUsers() {
 
   const users = state.status === "ready" ? state.users : [];
 
-  const counts = useMemo(
+  const counts = useMemo(() => {
+    const result = { all: users.length } as Record<Role | "all", number>;
+    for (const key of roleOrder) {
+      result[key] = users.filter((user) => user.roles.includes(key)).length;
+    }
+    return result;
+  }, [users]);
+
+  const summary = useMemo(
     () => ({
-      all: users.length,
-      customer: users.filter((u) => u.roles.includes("customer")).length,
-      technician: users.filter((u) => u.roles.includes("technician")).length,
-      admin: users.filter((u) => u.roles.includes("admin")).length,
+      customers: users.filter((user) => user.roles.length === 1 && user.roles[0] === "customer")
+        .length,
+      staff: users.filter((user) =>
+        user.roles.some((held) =>
+          ["technician", "store_manager", "finance_officer"].includes(held),
+        ),
+      ).length,
+      admins: users.filter((user) => user.roles.some((held) => ["admin", "super_admin"].includes(held)))
+        .length,
     }),
     [users],
   );
@@ -143,7 +174,7 @@ function AdminUsers() {
   return (
     <DashboardShell
       title="Users & roles"
-      subtitle="Live accounts from Supabase Auth, grouped by role"
+      subtitle="Live accounts from Supabase Auth with active multi-role assignments"
       workspace="Admin console"
       nav={adminNav}
     >
@@ -155,24 +186,42 @@ function AdminUsers() {
         </Card>
       ) : state.status === "setup" ? (
         <Card className="shadow-card">
-          <CardContent className="grid max-w-2xl gap-4 p-6">
+          <CardContent className="grid max-w-3xl gap-4 p-6">
             <span className="grid h-12 w-12 place-items-center rounded-full bg-warning/15 text-warning">
               <ShieldCheck className="h-5 w-5" />
             </span>
             <div>
               <h2 className="font-display text-lg font-bold">Connect the account tables first</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                This page lists real accounts, but the <code>profiles</code> and{" "}
-                <code>user_roles</code> tables do not exist yet. Run{" "}
-                <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">
-                  supabase/migrations/20261028120000_auth_roles_profiles.sql
-                </code>{" "}
-                in the Supabase SQL editor, then reload this page.
+                This page reads <code>profiles</code>, <code>user_role_assignments</code> and{" "}
+                <code>roles</code>. Apply the auth and RBAC migrations in order, then reload:
               </p>
+              <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+                <li>
+                  <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">
+                    20261028120000_auth_roles_profiles.sql
+                  </code>
+                </li>
+                <li>
+                  <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">
+                    20261109120000_rbac_schema.sql
+                  </code>
+                </li>
+                <li>
+                  <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">
+                    20261109121000_rbac_seed.sql
+                  </code>
+                </li>
+                <li>
+                  <code className="rounded bg-secondary px-1.5 py-0.5 text-xs">
+                    20261109122000_rbac_access.sql
+                  </code>
+                </li>
+              </ol>
             </div>
             <p className="text-sm text-muted-foreground">
-              Until the role table exists, every account is treated as a customer. Grant staff access
-              with the SQL in <code>docs/AUTH_SETUP.md</code> §4–5.
+              Until the tables exist, every account is treated as a customer. See{" "}
+              <code>docs/RBAC.md</code> for the bootstrap SQL that grants the first Super Admin.
             </p>
             <Button variant="outline" className="w-fit" onClick={() => window.location.reload()}>
               Reload after setup
@@ -196,7 +245,7 @@ function AdminUsers() {
               <CardContent className="flex items-center justify-between pt-6">
                 <div>
                   <p className="eyebrow text-muted-foreground">Customers</p>
-                  <p className="mt-2 font-display text-2xl font-bold">{counts.customer}</p>
+                  <p className="mt-2 font-display text-2xl font-bold">{summary.customers}</p>
                 </div>
                 <Users className="h-5 w-5 text-accent" />
               </CardContent>
@@ -204,8 +253,8 @@ function AdminUsers() {
             <Card className="shadow-card">
               <CardContent className="flex items-center justify-between pt-6">
                 <div>
-                  <p className="eyebrow text-muted-foreground">Technicians</p>
-                  <p className="mt-2 font-display text-2xl font-bold">{counts.technician}</p>
+                  <p className="eyebrow text-muted-foreground">Staff</p>
+                  <p className="mt-2 font-display text-2xl font-bold">{summary.staff}</p>
                 </div>
                 <Wrench className="h-5 w-5 text-cat-phone" />
               </CardContent>
@@ -214,9 +263,9 @@ function AdminUsers() {
               <CardContent className="flex items-center justify-between pt-6">
                 <div>
                   <p className="eyebrow text-muted-foreground">Administrators</p>
-                  <p className="mt-2 font-display text-2xl font-bold">{counts.admin}</p>
+                  <p className="mt-2 font-display text-2xl font-bold">{summary.admins}</p>
                 </div>
-                <ShieldCheck className="h-5 w-5 text-success" />
+                <UserCog className="h-5 w-5 text-success" />
               </CardContent>
             </Card>
           </div>
@@ -245,7 +294,7 @@ function AdminUsers() {
                 {(["all", ...roleOrder] as const).map((key) => {
                   const active = role === key;
                   const label = key === "all" ? "All" : roleLabels[key];
-                  const count = counts[key === "all" ? "all" : key];
+                  const count = counts[key];
                   return (
                     <button
                       key={key}
@@ -280,7 +329,7 @@ function AdminUsers() {
                       <TableRow>
                         <TableHead>Account</TableHead>
                         <TableHead>Phone</TableHead>
-                        <TableHead>Role</TableHead>
+                        <TableHead>Roles</TableHead>
                         <TableHead>Joined</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -299,7 +348,7 @@ function AdminUsers() {
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
                               {user.roles.length === 0 ? (
-                                <StatusBadge label="No role" tone="neutral" />
+                                <StatusBadge label="No active role" tone="danger" />
                               ) : (
                                 user.roles.map((held) => (
                                   <StatusBadge
@@ -324,9 +373,10 @@ function AdminUsers() {
           </Card>
 
           <p className="text-xs text-muted-foreground">
-            Accounts come from Supabase Auth. Roles are granted by an administrator in the database;
-            nobody can promote themselves from the website. Email addresses are not shown here yet
-            because they live in the protected auth schema.
+            Accounts come from Supabase Auth. Roles are granted by an authorised administrator in the
+            database; nobody can promote themselves from the website. Staff-wide reads require a
+            verified second factor. Email addresses are not shown here because they live in the
+            protected auth schema.
           </p>
         </div>
       )}

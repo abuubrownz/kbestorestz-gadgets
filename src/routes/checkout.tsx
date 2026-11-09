@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useAuth } from "@/lib/auth";
+import { allRoles, useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { formatTZS } from "@/lib/data";
 
@@ -50,7 +50,7 @@ function CheckoutPage() {
   // Orders belong to an account: guests can browse and fill a cart, but checkout
   // hands them to sign-in and returns them here afterwards.
   return (
-    <RequireRole allow={["customer", "technician", "admin"]}>
+    <RequireRole allow={allRoles}>
       <CheckoutContent />
     </RequireRole>
   );

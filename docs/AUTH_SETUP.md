@@ -7,24 +7,18 @@ name falls back to the name supplied at registration.
 
 ## 1. Create the tables (once)
 
-1. Open your Supabase project, then **SQL Editor**, then **New query**.
-2. Open `supabase/migrations/20261028120000_auth_roles_profiles.sql` from this repo, copy all of
-   it, paste it into the editor and press **Run**.
-3. It should finish with "Success". If it says something already exists, stop and do not re-run
-   it: ask your engineer to check what is already in the project first.
+Apply the migrations in this order in Supabase **SQL Editor** → **New query**, one file at a time:
 
-This creates: `profiles` (name and phone), `user_roles` (who is admin / technician / customer),
-a role-check function, security rules, and an automatic step that makes every new sign-up a
-**customer**.
+1. `supabase/migrations/20261028120000_auth_roles_profiles.sql` — profiles and the legacy role table.
+2. `supabase/migrations/20261109120000_rbac_schema.sql` — branches, roles, permissions, assignments, approvals and audit.
+3. `supabase/migrations/20261109121000_rbac_seed.sql` — the six approved roles, the permission catalogue and the role matrix.
+4. `supabase/migrations/20261109122000_rbac_access.sql` — helper functions, RLS, audit triggers, the role-assignment guard and the cutover to `user_role_assignments`.
 
-After confirming the existing database schema matches the first migration, apply
-`supabase/migrations/20261028130000_require_aal2_for_roles.sql`. It requires a verified phone
-second factor before application roles can be read or changed. Do not apply it blindly to a
-project whose existing policies have not been checked.
+The RBAC access migration **replaces `public.user_roles`** with `user_role_assignments`. It also installs the AAL2 profile rules that `20261028130000_require_aal2_for_roles.sql` previously provided. That older AAL2 migration is **superseded**: if it has not been applied yet, do not apply it after step 4 — it targets the table that step 4 drops. If it is already applied, step 4 replaces the profile policies safely.
 
-**Order matters:** finish section 3 (working phone MFA) before applying the AAL2 migration. That
-migration deliberately hides `user_roles` from AAL1 sessions, so on a project where phone MFA is
-not yet working, administrators would be treated as customers and would not see the admin console.
+`docs/RBAC.md` is the design of record: roles, permission matrix, branch model and the bootstrap SQL for the first Super Admin.
+
+**Order matters for the second factor:** staff-wide reads require AAL2. Finish section 3 (working phone MFA) before granting staff roles, or the staff member will see the interface shell but no data.
 
 
 ## 2. Turn on email confirmation
@@ -167,36 +161,70 @@ account and approved templates.
 
 1. Go to the website, open **Sign in**, then **Create account**, and register with your own email.
 2. Click the link in the confirmation email.
-3. In Supabase **SQL Editor** run this, changing the email to yours:
+3. In Supabase **SQL Editor**, create your branch if the project has none yet:
 
    ```sql
-   insert into public.user_roles (user_id, role)
-   select id, 'admin' from auth.users where email = 'your-email@example.com'
+   insert into public.branches (code, name, address, phone)
+   values ('dar-es-salaam', 'Dar es Salaam', 'Your address', '+255700000000')
+   on conflict (code) do nothing;
+   ```
+
+4. Grant the **Super Admin** role globally. Change the email to yours:
+
+   ```sql
+   insert into public.user_role_assignments (user_id, role_id, branch_id, reason)
+   select u.id, r.id, null, 'Bootstrap owner account'
+   from auth.users u
+   join public.roles r on r.code = 'super_admin'
+   where u.email = 'your-email@example.com'
    on conflict do nothing;
    ```
 
-4. Sign out and sign in again. You will now see the Admin dashboard link.
+5. Grant a **second** Super Admin the same way. The last active Super Admin cannot be revoked, so
+   at least two are required for continuity.
+6. Sign out and sign in again. You will now see the Admin dashboard link.
+
+`branch_id = null` means **global**. Only a Super Admin may hold or create a global assignment.
+Granting `admin`, `finance_officer` or `super_admin` through the app requires an approved
+`role_assignment_requests` row; direct SQL from the Supabase editor is the bootstrap path.
 
 ### The users & roles directory
 
-`/admin/users` (Admin console → **Users & roles**) lists every real account with name, phone, role
-and joined date, and filters by customer, technician and admin. It reads `profiles` and
-`user_roles`, so it shows a setup card until §1 has been applied. Email addresses live in
-Supabase's protected `auth` schema and are deliberately not exposed to the browser; add an
-admin-only RPC later if the team needs them.
+`/admin/users` (Admin console → **Users & roles**) lists every real account with name, phone,
+active roles and joined date, and filters by all six roles. It reads `profiles`,
+`user_role_assignments` and `roles`, so it shows a setup card until §1 has been applied. Staff-wide
+reads require a verified second factor (AAL2). Email addresses live in Supabase's protected `auth`
+schema and are deliberately not exposed to the browser; add an admin-only RPC later if the team
+needs them.
 
-## 5. Adding technicians
+## 5. Adding branch staff
 
-Ask the technician to register on the website and confirm their email. Then run the same query
-with `'technician'` and their email. Nobody can give themselves staff access from the website.
+Ask the technician, store manager or finance officer to register on the website and confirm their
+email. Then run the grant with their branch:
+
+```sql
+insert into public.user_role_assignments (user_id, role_id, branch_id, reason)
+select u.id, r.id, b.id, 'Initial staff grant'
+from auth.users u
+join public.roles r on r.code = 'technician'   -- or store_manager, finance_officer
+join public.branches b on b.code = 'dar-es-salaam'
+where u.email = 'staff@example.com'
+on conflict do nothing;
+```
+
+Nobody can give themselves staff access from the website. A staff member keeps the **customer**
+baseline role, so they can still use their own account, orders and repairs. Multiple roles are
+additive; a technician may also be a store manager, with each role scoped to its branch.
 
 ## What this does and does not protect
 
-- Registering always creates a **customer**. Roles are stored in their own table that customers
-  cannot change.
+- Registering always creates a **customer**. Role assignments live in their own table that
+  customers cannot change, and a user cannot assign a role to themselves.
 - The admin and technician pages hide themselves from other roles, but the **real protection of
-  data is the database security rules**. Role policies require Supabase AAL2 (verified phone MFA).
-  Every future business table must also have its own least-privilege RLS policies.
+  data is the database security rules**. Staff-wide reads require Supabase AAL2 (verified phone
+  MFA). Route guards are a user-experience layer only.
+- Every future business table must also have its own least-privilege RLS policies, scoped by
+  `branch_id` where the data is branch-specific.
 - Dashboard business data is still sample data; phone MFA does not make sample business records
   persistent or turn them into customer-specific records.
 - Customers' names, phone numbers and emails are personal data. Before launch, confirm your
@@ -210,10 +238,11 @@ with `'technician'` and their email. Nobody can give themselves staff access fro
 | No confirmation or reset email arrives | Supabase's built-in email is rate-limited and often filtered | Configure **Authentication → SMTP Settings** with a real sender before testing with customers |
 | The email link opens the live site (or an error) instead of `localhost:8080` | `http://localhost:8080/login` and `http://localhost:8080/reset-password` are not in **Redirect URLs** | Add both (plus `http://localhost:8080/**` while developing) under **Authentication → URL Configuration** |
 | Sign-in succeeds but no SMS arrives and no code screen appears | Phone provider is disabled on the project | The app signs the user in with email/password only (see §3); enable phone MFA when ready |
-| Signed in, but there is no Admin/Technician link | The auth migration is not applied, the role has not been granted, or the AAL2 policy is active without working phone MFA | Run §1, grant the role in §4–5, and finish §3 before applying the AAL2 migration |
+| Signed in, but there is no Admin/Technician link | The RBAC migration is not applied, the role has not been granted, or staff reads are blocked without AAL2 | Run §1, grant the role in §4–5, and finish §3 before granting staff roles |
 | “Continue with Facebook” is missing | Facebook is not enabled on the Supabase project | The button is hidden by design until §2 (Facebook) is configured |
 | Facebook returns to the site with an error | The Meta callback or Supabase redirect URL is wrong | Recheck the callback and redirect URLs in §2 |
-| `/admin/users` shows a setup card | `profiles` / `user_roles` are missing | Apply §1, then reload |
+| `/admin/users` shows a setup card | `profiles`, `roles` or `user_role_assignments` is missing | Apply all four migrations in §1, then reload |
+| `/admin/users` loads but lists no roles | Staff reads need AAL2, or the role grant is missing | Finish phone MFA (§3), then check `user_role_assignments` for an active row |
 | “Too many attempts or emails sent” | Supabase Auth rate limit, including email sends | Wait a few minutes; for repeated testing use test phone numbers (§3) and a real SMTP sender |
 
 ## Testing checklist
@@ -232,4 +261,5 @@ with `'technician'` and their email. Nobody can give themselves staff access fro
   valid email sends a link that opens **Choose a new password**; the same neutral confirmation shows
   for an address with no account.
 - A wrong password shows one neutral message.
-- With only an AAL1 session, direct reads/writes of `user_roles` must be denied by RLS.
+- With only an AAL1 session, direct reads/writes of `user_role_assignments` must be denied by RLS
+  except for the user's own rows.

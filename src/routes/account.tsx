@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { PublicShell } from "@/components/kb/public-shell";
 import { RequireRole } from "@/components/kb/require-role";
-import { useAuth } from "@/lib/auth";
+import { allRoles, useAuth } from "@/lib/auth";
 import { useCatalogue } from "@/lib/catalogue";
 import { useWishlist } from "@/lib/wishlist";
 import { DeviceVisual } from "@/components/kb/device-visual";
@@ -90,7 +90,7 @@ function KpiCard({
 
 function AccountPage() {
   return (
-    <RequireRole allow={["customer", "technician", "admin"]}>
+    <RequireRole allow={allRoles}>
       <AccountContent />
     </RequireRole>
   );

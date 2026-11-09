@@ -11,7 +11,7 @@ import { roleHome, roleLabels, useAuth, type Role } from "@/lib/auth";
  * (signed in with the wrong role). Children are never mounted for blocked users.
  */
 export function RequireRole({ allow, children }: { allow: Role[]; children: ReactNode }) {
-  const { user, ready, signOut } = useAuth();
+  const { user, ready, signOut, hasRole } = useAuth();
   const pathname = useLocation({ select: (l) => l.pathname });
 
   if (!ready) {
@@ -24,7 +24,7 @@ export function RequireRole({ allow, children }: { allow: Role[]; children: Reac
     );
   }
 
-  if (user && allow.includes(user.role)) return <>{children}</>;
+  if (user && hasRole(allow)) return <>{children}</>;
 
   const signedOut = !user;
 

@@ -3,7 +3,7 @@
 > Single source of truth for the CTO and every coding agent working on this repository.
 > Update the **Now / Next / Blocked** section at the end of each working session.
 >
-> Last verified: **2026-11-04** · branch `feat/real-auth` (pushed at `92ff3af`) · verified by an AI coding agent.
+> Last verified: **2026-11-09** · branch `feat/rbac-foundation` (from `fd63d63`) · verified by an AI coding agent.
 
 ---
 
@@ -48,7 +48,10 @@ Prettier `endOfLine: "auto"` and adding `.gitattributes`.
 - **UI:** Tailwind CSS 4 + shadcn/ui primitives in `src/components/ui`; product-specific
   components in `src/components/kb`; design tokens in `src/styles.css`.
 - **Auth:** `src/lib/auth.tsx` — Supabase email/password, email confirmation, AAL2 phone MFA.
-  Roles (`admin` / `technician` / `customer`) come from `public.user_roles`, never from the client.
+  Active roles (`super_admin`, `admin`, `finance_officer`, `store_manager`, `technician`, `customer`)
+  come from `public.user_role_assignments` joined with `public.roles`, never from the client.
+- **Authorization model:** `docs/RBAC.md` — six roles, permission catalogue, branch scope, grant
+  ceilings, conflict rules and the migration runbook. Route guards are UX only; RLS is the boundary.
 - **Route guards:** `src/components/kb/require-role.tsx`. Guards only hide UI; **RLS is the real
   security boundary.**
 - **Cart:** `src/lib/cart.tsx` — `localStorage`, key `kbestoretz.cart`.
@@ -76,10 +79,15 @@ Prettier `endOfLine: "auto"` and adding `.gitattributes`.
 
 **Written but NOT applied to Supabase:**
 - `supabase/migrations/20261028120000_auth_roles_profiles.sql` (auth tables/roles)
-- `supabase/migrations/20261028130000_require_aal2_for_roles.sql` (AAL2 on role data)
+- `supabase/migrations/20261028130000_require_aal2_for_roles.sql` (superseded by the RBAC access
+  migration — do not apply it after RBAC)
+- `supabase/migrations/20261109120000_rbac_schema.sql` (branches, roles, permissions, assignments)
+- `supabase/migrations/20261109121000_rbac_seed.sql` (six roles, 50 permissions, grant ceilings)
+- `supabase/migrations/20261109122000_rbac_access.sql` (helpers, RLS, audit, role guard, cutover)
 - `supabase/migrations/20261028150000_catalogue_products_images.sql` (on `feat/catalogue-db`)
 
-Applying a migration is a **CTO decision**. Never apply one automatically.
+Applying a migration is a **CTO decision**. Never apply one automatically. The RBAC files are
+written and reviewed but have **not** been executed against any database.
 
 ## 5. Branch map (as fetched on 2026-10-29)
 
@@ -335,9 +343,11 @@ returns `400`, as expected); `/login` and `/reset-password` return 200.
 
 ---
 
-### 2026-11-04: Facebook sign-in + real users directory (awaiting CTO preview)
+### 2026-11-04: Facebook sign-in + real users directory (pushed at `fd63d63`)
 
-Two additions on top of `92ff3af`. Both are **uncommitted** until the CTO reviews the preview.
+Two additions on top of `92ff3af`, committed and pushed to `feat/real-auth` as **`fd63d63`** on
+2026-11-09 after Founder approval. The RBAC migration now moves the directory read to
+`user_role_assignments` + `roles`.
 
 **Facebook sign-in (Facebook only).**
 - `src/lib/auth.tsx` gained `signInWithOAuth("facebook")` and a `provider_unavailable` error code,
@@ -379,21 +389,67 @@ screenshots.
 
 ---
 
+### 2026-11-09: enterprise RBAC foundation (written, NOT applied)
+
+Founder approved the Phase 1 RBAC architecture and its ten defaults. The Facebook + `/admin/users`
+slice was committed and pushed first, on `feat/real-auth` at **`fd63d63`**. This work is on a new
+branch, **`feat/rbac-foundation`**, cut from that commit. Approval covered **writing migration files
+only** — no Supabase project was changed.
+
+**Database (three new migrations, in apply order after `20261028120000`):**
+
+- `20261109120000_rbac_schema.sql` — `branches`, `roles`, `permissions`, `role_permissions`,
+  `role_assignment_rules`, `role_conflict_rules`, `user_role_assignments`, `staff_profiles`,
+  `approval_limits`, `role_assignment_requests`, `audit_logs`. Active-assignment partial unique
+  index; soft revocation; append-only audit shape.
+- `20261109121000_rbac_seed.sql` — six roles (`customer`, `technician`, `store_manager`, `admin`,
+  `finance_officer`, `super_admin`), 50 permissions, the role matrix, grant ceilings, and the two
+  high-risk conflict pairs (`admin`/`store_manager` + `finance_officer`). Idempotent.
+- `20261109122000_rbac_access.sql` — `app`-schema helpers (`current_roles`, `is_super_admin`,
+  `has_permission`, `has_permission_any_branch`, `has_cross_branch`, `can_access_branch`), RLS on
+  every new table, AAL2 profile rules, audit triggers, the role-assignment guard (no self-assignment,
+  no grant above rank, last Super Admin protected), the legacy `user_roles` migration, and the
+  replacement `public.has_role` / `public.handle_new_user`.
+
+**Client:**
+
+- `src/lib/auth.tsx` now reads active assignments from `user_role_assignments` + `roles`, exposes all
+  six roles, keeps `roles: Role[]`, and treats a `super_admin` as universal for UI guards. Staff
+  without a dedicated dashboard (`finance_officer`, `store_manager`) land on `/account` for now.
+- `src/components/kb/require-role.tsx` checks the role set via `hasRole`; `/account` and `/checkout`
+  use the exported `allRoles`.
+- `src/routes/admin.users.tsx` lists live accounts with multi-role badges for all six roles and shows
+  the four-migration setup card until the tables exist.
+- `src/integrations/supabase/types.ts` replaces `user_roles` with `roles` and
+  `user_role_assignments`.
+
+**Docs:** `docs/RBAC.md` is the design of record (principles, role matrix, branch model, authz flow,
+route targets, RLS summary, runbook, audit, open decisions). `docs/AUTH_SETUP.md` now lists the exact
+migration order, bootstrap Super Admin SQL, branch staff grants, the directory behaviour and
+troubleshooting rows. The older `20261028130000` AAL2 migration is documented as superseded.
+
+**Verified:** `bun x tsc --noEmit` passes; `bun run build` passes; the SQL has not been executed
+(no database was touched), so RLS and trigger behaviour are unverified.
+
+**Not verified:** the migrations themselves, a populated `/admin/users`, and all staff data reads
+(staff-wide reads require AAL2, and phone MFA is still unavailable). The in-app browser is
+disconnected, so there are no screenshots.
+
+---
+
 ## Now / Next / Blocked
 
-- **Now:** the catalogue/member-access/auth slice is pushed at **`2b836be`** on `feat/real-auth`.
-  The sign-in fallback for projects without phone MFA is pushed at **`f44fb6e`**, and the
-  troubleshooting docs at **`92ff3af`**. Facebook sign-in and the admin `/admin/users` directory are
-  implemented, verified by tsc/build and awaiting CTO preview before commit/push. Sign-in with
-  email/password works when the Supabase project has no phone provider; staff roles still require
-  the auth migration plus phone MFA.
-- **Next:** after CTO approval, commit and push the Facebook + users-directory slice; then move
-  repair bookings into a shared store so a signed-in booking appears under account → Repairs; then
-  apply the catalogue migration and swap the localStorage providers for Supabase reads/writes.
-- **Blocked:** `/admin/users` is populated only after
-  `20261028120000_auth_roles_profiles.sql` is applied (both tables currently return 404); the
-  Facebook button stays hidden until a Meta app exists and the provider is enabled; live
-  ordering/booking persistence (needs schema + CTO approval); production SMS delivery (needs an
-  approved provider, sender ID and Edge Function secrets — Beem Africa recommended for cost,
-  Africa's Talking adapter already present); production email (needs SMTP provider); staff role
-  recognition and AAL2 (need the auth migration, a role grant and working phone MFA).
+- **Now:** RBAC foundation is written on `feat/rbac-foundation` (from `fd63d63`), verified by
+  tsc/build and awaiting CTO preview/commit. Migration files are complete but **not applied**.
+- **Next:** CTO reviews the RBAC diff; then apply `20261028120000` → RBAC schema → seed → access with
+  a backup and rollback plan, and bootstrap two Super Admins. After that, build the server-side
+  authorization layer (`requirePermission`, AAL2, branch scope) and add `/manager`, `/finance`,
+  `/super-admin`. Separately, move repair bookings into a shared store so a signed-in booking appears
+  under account → Repairs.
+- **Blocked:** RBAC migrations need CTO sign-off, a database backup and working phone MFA (staff
+  reads require AAL2). Phone MFA is unavailable (`external.phone=false`), Facebook is disabled
+  (`external.facebook=false`), and `mailer_autoconfirm=false`. Live tables still 404: `profiles`,
+  `user_roles`, `products`, `orders`, `repairs`, `inventory`, `branches`, `user_role_assignments`
+  (post-migration). Custom SMTP, SMS provider/sender ID/Edge Function secrets, and the Meta app are
+  still missing. Vercel is unconfigured (`cloudflare-module` output, no `vercel.json`). Refund approval
+  amounts and the canonical branch list (and branch seed data) remain Founder/CTO inputs.
