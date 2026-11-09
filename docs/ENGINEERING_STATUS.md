@@ -393,8 +393,8 @@ screenshots.
 
 Founder approved the Phase 1 RBAC architecture and its ten defaults. The Facebook + `/admin/users`
 slice was committed and pushed first, on `feat/real-auth` at **`fd63d63`**. This work is on a new
-branch, **`feat/rbac-foundation`**, cut from that commit. Approval covered **writing migration files
-only** — no Supabase project was changed.
+branch, **`feat/rbac-foundation`**, cut from that commit and pushed at **`c5178fa`**. Approval
+covered **writing migration files only** — no Supabase project was changed.
 
 **Database (three new migrations, in apply order after `20261028120000`):**
 
@@ -439,8 +439,9 @@ disconnected, so there are no screenshots.
 
 ## Now / Next / Blocked
 
-- **Now:** RBAC foundation is written on `feat/rbac-foundation` (from `fd63d63`), verified by
-  tsc/build and awaiting CTO preview/commit. Migration files are complete but **not applied**.
+- **Now:** RBAC foundation is written and pushed on `feat/rbac-foundation` at **`c5178fa`** (from
+  `fd63d63`), verified by tsc/build and awaiting CTO review. Migration files are complete but
+  **not applied**.
 - **Next:** CTO reviews the RBAC diff; then apply `20261028120000` → RBAC schema → seed → access with
   a backup and rollback plan, and bootstrap two Super Admins. After that, build the server-side
   authorization layer (`requirePermission`, AAL2, branch scope) and add `/manager`, `/finance`,
